@@ -29,12 +29,14 @@ pub struct ProblemInfo {
     pub long_title: String,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Testcase {
     pub ord: u32,
     pub input: String,
     pub expected: String,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PgLang {
     pub name: String,
     pub id: String,
@@ -51,8 +53,6 @@ pub trait Client {
     fn is_problem_url(&self, url: &Url) -> bool;
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
-
-    async fn fetch_problem_info(&self, problem_url: &Url) -> Result<ProblemInfo>;
 
     async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
 

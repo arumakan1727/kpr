@@ -166,3 +166,38 @@ async fn fetch_abc001_info() {
         ]
     )
 }
+
+#[tokio::test]
+async fn fetch_abc003_4_testcases() {
+    let url = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
+    let cli = AtCoderClient::new();
+    let testcases = cli
+        .fetch_testcases(&Url::parse(&url).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        testcases,
+        vec![
+            Testcase {
+                ord: 1,
+                input: ["3 2", "2 2", "2 2"].join("\n"),
+                expected: "12".to_owned(),
+            },
+            Testcase {
+                ord: 2,
+                input: ["4 5", "3 1", "3 0"].join("\n"),
+                expected: "10".to_owned(),
+            },
+            Testcase {
+                ord: 3,
+                input: ["23 18", "15 13", "100 95"].join("\n"),
+                expected: "364527243".to_owned(),
+            },
+            Testcase {
+                ord: 4,
+                input: ["30 30", "24 22", "145 132"].join("\n"),
+                expected: "976668549".to_owned(),
+            },
+        ]
+    );
+}

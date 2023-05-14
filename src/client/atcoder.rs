@@ -3,7 +3,7 @@ use crate::errors::*;
 use async_trait::async_trait;
 use chrono::DateTime;
 use lazy_regex::{lazy_regex, Lazy, Regex};
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 
 pub struct AtCoderClient {
     http: reqwest::Client,
@@ -28,6 +28,11 @@ fn complete_url(link: &str) -> String {
         assert!(link.starts_with("https://"));
         link.to_owned()
     }
+}
+
+fn extract_testcase(pre: ElementRef) -> String {
+    let node = pre.first_child().unwrap().value();
+    node.as_text().unwrap().trim().to_owned()
 }
 
 impl AtCoderClient {
@@ -119,12 +124,45 @@ impl Client for AtCoderClient {
         })
     }
 
-    async fn fetch_problem_info(&self, problem_url: &Url) -> Result<ProblemInfo> {
-        todo!()
-    }
-
     async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>> {
-        todo!()
+        let html = self
+            .http
+            .get(problem_url.clone())
+            .send()
+            .await?
+            .text()
+            .await?;
+        let doc = Html::parse_document(&html);
+
+        let sel_parts = Selector::parse("#task-statement > .part").unwrap();
+        let sel_h3 = Selector::parse("h3").unwrap();
+        let sel_pre = Selector::parse("pre").unwrap();
+
+        let mut in_cases = Vec::with_capacity(5);
+        let mut out_cases = Vec::with_capacity(5);
+
+        for node in doc.select(&sel_parts) {
+            let h3 = node.select(&sel_h3).next().unwrap();
+            let title = h3.text().next().unwrap().trim().to_lowercase();
+            if title.starts_with("入力例") || title.starts_with("sample input") {
+                let pre = node.select(&sel_pre).next().unwrap();
+                in_cases.push(extract_testcase(pre));
+            } else if title.starts_with("出力例") || title.starts_with("sample output") {
+                let pre = node.select(&sel_pre).next().unwrap();
+                out_cases.push(extract_testcase(pre));
+            }
+        }
+        let cases: Vec<_> = in_cases
+            .into_iter()
+            .zip(out_cases)
+            .enumerate()
+            .map(|(i, (input, expected))| Testcase {
+                ord: (i + 1) as u32,
+                input,
+                expected,
+            })
+            .collect();
+        Ok(cases)
     }
 
     fn login(&mut self, cred: &Self::Credential) -> Result<()> {
