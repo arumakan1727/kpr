@@ -16,16 +16,9 @@ pub struct ContestInfo {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ProblemInfo {
-    /// e.g.) "https://atcoder.jp/contests/abc095/tasks/arc096_b"
     pub url: String,
-
-    /// First problem is 1, second problem is 2, ...
     pub ord: u32,
-
-    // e.g.) A
     pub short_title: String,
-
-    // e.g.) Stathic_Sushi
     pub long_title: String,
 }
 
