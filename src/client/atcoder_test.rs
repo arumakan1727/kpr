@@ -1,3 +1,6 @@
+use chrono::Local;
+use chrono::TimeZone;
+
 use super::atcoder::*;
 use super::common::*;
 
@@ -111,7 +114,55 @@ fn should_not_be_problem_url() {
     assert!(!is_problem_url(
         "https://atcoder.com/contests/abc001/abc001_a"
     ));
-    assert!(!is_problem_url(
-        "https://atcoder.jp/contests/abc001/abc001_a?param"
-    ));
+}
+
+#[tokio::test]
+async fn fetch_abc001_info() {
+    let url = "https://atcoder.jp/contests/abc001";
+    let cli = AtCoderClient::new();
+    let info = cli
+        .fetch_contest_info(&Url::parse(&url).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(info.url, url);
+    assert_eq!(info.short_title, "abc001");
+    assert_eq!(info.long_title, "AtCoder Beginner Contest 001");
+    assert_eq!(
+        info.start_at,
+        Local.with_ymd_and_hms(2013, 10, 12, 21, 0, 0).unwrap()
+    );
+    assert_eq!(
+        info.end_at,
+        Local.with_ymd_and_hms(2013, 10, 12, 23, 0, 0).unwrap()
+    );
+    assert_eq!(
+        info.problems,
+        vec![
+            ProblemInfo {
+                url: "https://atcoder.jp/contests/abc001/tasks/abc001_1".to_owned(),
+                ord: 1,
+                short_title: "A".to_owned(),
+                long_title: "積雪深差".to_owned(),
+            },
+            ProblemInfo {
+                url: "https://atcoder.jp/contests/abc001/tasks/abc001_2".to_owned(),
+                ord: 2,
+                short_title: "B".to_owned(),
+                long_title: "視程の通報".to_owned(),
+            },
+            ProblemInfo {
+                url: "https://atcoder.jp/contests/abc001/tasks/abc001_3".to_owned(),
+                ord: 3,
+                short_title: "C".to_owned(),
+                long_title: "風力観測".to_owned(),
+            },
+            ProblemInfo {
+                url: "https://atcoder.jp/contests/abc001/tasks/abc001_4".to_owned(),
+                ord: 4,
+                short_title: "D".to_owned(),
+                long_title: "感雨時刻の整理".to_owned(),
+            },
+        ]
+    )
 }

@@ -1,8 +1,10 @@
 use crate::errors::Result;
+use async_trait::async_trait;
 use chrono::DateTime;
 
 pub use reqwest::Url;
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ContestInfo {
     pub url: String,
     pub short_title: String,
@@ -12,6 +14,7 @@ pub struct ContestInfo {
     pub end_at: DateTime<chrono::Local>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ProblemInfo {
     /// e.g.) "https://atcoder.jp/contests/abc095/tasks/arc096_b"
     pub url: String,
@@ -39,6 +42,7 @@ pub struct PgLang {
 
 pub type SubmissionID = u64;
 
+#[async_trait]
 pub trait Client {
     type Credential;
 
@@ -46,11 +50,11 @@ pub trait Client {
 
     fn is_problem_url(&self, url: &Url) -> bool;
 
-    fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
+    async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
 
-    fn fetch_problem_info(&self, problem_url: &Url) -> Result<ProblemInfo>;
+    async fn fetch_problem_info(&self, problem_url: &Url) -> Result<ProblemInfo>;
 
-    fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
+    async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
 
     fn login(&mut self, cred: &Self::Credential) -> Result<()>;
 
@@ -58,5 +62,10 @@ pub trait Client {
 
     fn logout(&mut self) -> Result<()>;
 
-    fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<SubmissionID>;
+    async fn submit(
+        &self,
+        problem_url: &Url,
+        lang: &PgLang,
+        source_code: &str,
+    ) -> Result<SubmissionID>;
 }
