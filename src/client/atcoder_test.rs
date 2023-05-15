@@ -62,7 +62,7 @@ fn should_be_problem_url() {
         "https://atcoder.jp/contests/typical90/tasks/typical90_a"
     ));
     assert!(is_problem_url(
-        "https://atcoder.jp/contests/typical90/tasks/typical90_a/"
+        "https://atcoder.jp/contests/abs/tasks/abc086_a/"
     ));
     assert!(is_problem_url(
         "https://atcoder.jp/contests/abc001/tasks/abc001_a#a?x"
@@ -199,6 +199,31 @@ async fn fetch_abc003_4_testcases() {
                 ord: 4,
                 input: ["30 30", "24 22", "145 132"].join("\n"),
                 expected: "976668549".to_owned(),
+            },
+        ]
+    );
+}
+
+#[tokio::test]
+async fn fetch_abc086_a_testcases() {
+    let url = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+    let cli = AtCoderClient::new();
+    let testcases = cli
+        .fetch_testcases(&Url::parse(&url).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        testcases,
+        vec![
+            Testcase {
+                ord: 1,
+                input: "3 4".to_owned(),
+                expected: "Even".to_owned(),
+            },
+            Testcase {
+                ord: 2,
+                input: "1 21".to_owned(),
+                expected: "Odd".to_owned(),
             },
         ]
     );

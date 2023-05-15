@@ -135,14 +135,18 @@ impl Client for AtCoderClient {
             .await?;
         let doc = Html::parse_document(&html);
 
-        let sel_parts = Selector::parse("#task-statement > .part").unwrap();
+        let sel_parts_current_ver = Selector::parse("#task-statement .lang-en > .part").unwrap();
+        let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
         let sel_h3 = Selector::parse("h3").unwrap();
         let sel_pre = Selector::parse("pre").unwrap();
 
         let mut in_cases = Vec::with_capacity(5);
         let mut out_cases = Vec::with_capacity(5);
 
-        for node in doc.select(&sel_parts) {
+        for node in doc
+            .select(&sel_parts_current_ver)
+            .chain(doc.select(&sel_parts_old_ver))
+        {
             let h3 = node.select(&sel_h3).next().unwrap();
             let title = h3.text().next().unwrap().trim().to_lowercase();
             if title.starts_with("入力例") || title.starts_with("sample input") {
