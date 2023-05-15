@@ -17,6 +17,15 @@ pub struct Cred {
     pub password: String,
 }
 
+impl IntoCredMap for Cred {
+    fn into_cred_map(&self) -> CredMap {
+        let mut h = CredMap::new();
+        h.insert("username", &self.username);
+        h.insert("password", &self.password);
+        h
+    }
+}
+
 static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
 static RE_PROBLEM_URL_PATH: Lazy<Regex> =
     lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/(([[:alnum:]]+)_([[:alnum:]]+))/?$");
@@ -45,8 +54,6 @@ impl AtCoderClient {
 
 #[async_trait]
 impl Client for AtCoderClient {
-    type Credential = Cred;
-
     fn is_contest_url(&self, url: &Url) -> bool {
         url.scheme() == "https"
             && url.host_str() == Some(HOST)
@@ -169,7 +176,7 @@ impl Client for AtCoderClient {
         Ok(cases)
     }
 
-    async fn login(&mut self, cred: Self::Credential) -> Result<()> {
+    async fn login(&mut self, cred: Box<dyn IntoCredMap>) -> Result<()> {
         let csrf_token = {
             let html = self.http.get(LOGIN_URL).send().await?.text().await?;
             let doc = Html::parse_document(&html);
@@ -178,10 +185,8 @@ impl Client for AtCoderClient {
             el.attr("value").unwrap().to_owned()
         };
         let resp = {
-            let mut params = HashMap::new();
-            params.insert("username", cred.username);
-            params.insert("password", cred.password);
-            params.insert("csrf_token", csrf_token);
+            let mut params = cred.into_cred_map();
+            params.insert("csrf_token", &csrf_token);
             self.http.post(LOGIN_URL).form(&params).send().await?
         };
         let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
@@ -193,10 +198,10 @@ impl Client for AtCoderClient {
         }
     }
 
-    fn ask_credential(&self) -> Result<Self::Credential> {
+    fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>> {
         let username = ui::ask_text("enter username").map_err(|e| anyhow!(e))?;
         let password = ui::ask_password("enter password").map_err(|e| anyhow!(e))?;
-        Ok(Self::Credential { username, password })
+        Ok(Box::new(Cred { username, password }))
     }
 
     async fn logout(&mut self) -> Result<()> {

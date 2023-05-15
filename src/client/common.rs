@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::DateTime;
@@ -44,10 +46,14 @@ impl PgLang {
     }
 }
 
+pub type CredMap<'a> = HashMap<&'static str, &'a str>;
+
+pub trait IntoCredMap: Send {
+    fn into_cred_map(&self) -> CredMap;
+}
+
 #[async_trait]
 pub trait Client {
-    type Credential;
-
     fn is_contest_url(&self, url: &Url) -> bool;
 
     fn is_problem_url(&self, url: &Url) -> bool;
@@ -56,9 +62,9 @@ pub trait Client {
 
     async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
 
-    async fn login(&mut self, cred: Self::Credential) -> Result<()>;
+    async fn login(&mut self, cred: Box<dyn IntoCredMap>) -> Result<()>;
 
-    fn ask_credential(&self) -> Result<Self::Credential>;
+    fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>>;
 
     async fn logout(&mut self) -> Result<()>;
 

@@ -238,7 +238,7 @@ async fn login_and_submit_and_logout() {
 
     let mut cli = AtCoderClient::new();
 
-    cli.login(Cred { username, password })
+    cli.login(Box::new(Cred { username, password }))
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
 
