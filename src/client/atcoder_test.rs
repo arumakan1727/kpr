@@ -230,7 +230,7 @@ async fn fetch_abc086_a_testcases() {
 }
 
 #[tokio::test]
-async fn login_and_logout() {
+async fn login_and_submit_and_logout() {
     let TestConfig {
         atcoder_username: username,
         atcoder_password: password,
@@ -241,6 +241,19 @@ async fn login_and_logout() {
     cli.login(Cred { username, password })
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
+
+    cli.submit(
+        &Url::parse("https://atcoder.jp/contests/abs/tasks/abc086_a").unwrap(),
+        &PgLang::new("Python (3.8.2)", "4006"),
+        [
+            "a, b = map(int, input().split())",
+            "print(('Even', 'Odd')[a * b & 1])",
+        ]
+        .join("\n")
+        .as_ref(),
+    )
+    .await
+    .unwrap_or_else(|e| panic!("{:?}", e));
 
     cli.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 }

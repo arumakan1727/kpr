@@ -20,7 +20,7 @@ pub struct Cred {
 
 static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
 static RE_PROBLEM_URL_PATH: Lazy<Regex> =
-    lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/([[:alnum:]]+)_([[:alnum:]]+)/?$");
+    lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/(([[:alnum:]]+)_([[:alnum:]]+))/?$");
 
 pub const HOST: &'static str = "atcoder.jp";
 pub const HOME_URL: &'static str = "https://atcoder.jp/home";
@@ -219,12 +219,40 @@ impl Client for AtCoderClient {
         }
     }
 
-    async fn submit(
-        &self,
-        problem_url: &Url,
-        lang: &PgLang,
-        source_code: &str,
-    ) -> Result<SubmissionID> {
-        todo!()
+    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
+        let csrf_token = {
+            let url = problem_url.clone();
+            let html = self.http.get(url).send().await?.text().await?;
+            let doc = Html::parse_document(&html);
+            let sel = Selector::parse("#main-div form > input[name='csrf_token']").unwrap();
+            let el = doc.select(&sel).next().unwrap().value();
+            el.attr("value").unwrap().to_owned()
+        };
+        let (contest_name, task_name) = {
+            let caps = RE_PROBLEM_URL_PATH.captures(problem_url.path()).unwrap();
+            (caps[1].to_owned(), caps[2].to_owned())
+        };
+        let submit_url = {
+            let mut url = problem_url.clone();
+            url.set_path(&format!("/contests/{}/submit", contest_name));
+            url
+        };
+        let resp = {
+            let mut params = HashMap::new();
+            params.insert("sourceCode", source_code);
+            params.insert("data.LanguageId", &lang.id);
+            params.insert("data.TaskScreenName", &task_name);
+            params.insert("csrf_token", &csrf_token);
+            self.http.post(submit_url).form(&params).send().await?
+        };
+        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+        let submissions_path = format!("/contests/{}/submissions/me", contest_name);
+        ensure!(
+            location == submissions_path,
+            "Unexpected redirect path: {} (expected {})",
+            location,
+            submissions_path
+        );
+        Ok(())
     }
 }

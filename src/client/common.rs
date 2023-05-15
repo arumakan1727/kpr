@@ -35,7 +35,14 @@ pub struct PgLang {
     pub id: String,
 }
 
-pub type SubmissionID = u64;
+impl PgLang {
+    pub fn new(name: &str, id: &str) -> Self {
+        Self {
+            name: name.to_owned(),
+            id: id.to_owned(),
+        }
+    }
+}
 
 #[async_trait]
 pub trait Client {
@@ -55,10 +62,5 @@ pub trait Client {
 
     async fn logout(&mut self) -> Result<()>;
 
-    async fn submit(
-        &self,
-        problem_url: &Url,
-        lang: &PgLang,
-        source_code: &str,
-    ) -> Result<SubmissionID>;
+    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()>;
 }
