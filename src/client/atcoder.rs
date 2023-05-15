@@ -10,8 +10,8 @@ pub struct AtCoderClient {
 }
 
 pub struct Cred {
-    email: String,
-    password: String,
+    pub username: String,
+    pub password: String,
 }
 
 static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");

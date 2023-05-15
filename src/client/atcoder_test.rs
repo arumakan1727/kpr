@@ -1,6 +1,8 @@
 use chrono::Local;
 use chrono::TimeZone;
 
+use crate::testconfig::TestConfig;
+
 use super::atcoder::*;
 use super::common::*;
 
@@ -200,4 +202,17 @@ async fn fetch_abc003_4_testcases() {
             },
         ]
     );
+}
+
+#[tokio::test]
+async fn login_should_be_success() {
+    let mut cli = AtCoderClient::new();
+    let cfg = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
+
+    cli.login(Cred {
+        username: cfg.atcoder_username,
+        password: cfg.atcoder_password,
+    })
+    .await
+    .unwrap_or_else(|e| panic!("{:?}", e));
 }

@@ -9,8 +9,10 @@ edition = "2021"
 anyhow = "1.0.71"
 async-trait = "0.1.68"
 chrono = "0.4.24"
+envy = "0.4.2"
 futures = "0.3.28"
 lazy-regex = "2.5.0"
 reqwest = "0.11.17"
 scraper = "0.16.0"
+serde = { version = "1.0.163", features = ["derive"] }
 tokio = { version = "1.28.0", features = ["macros"] }

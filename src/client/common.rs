@@ -49,7 +49,7 @@ pub trait Client {
 
     async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
 
-    fn login(&mut self, cred: &Self::Credential) -> Result<()>;
+    async fn login(&mut self, cred: Self::Credential) -> Result<()>;
 
     fn ask_credential(&self) -> Result<&Self::Credential>;
 
