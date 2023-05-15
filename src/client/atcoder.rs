@@ -12,6 +12,7 @@ pub struct AtCoderClient {
     http: reqwest::Client,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cred {
     pub username: String,
     pub password: String,

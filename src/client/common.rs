@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use crate::errors::Result;
 use async_trait::async_trait;
@@ -48,7 +48,7 @@ impl PgLang {
 
 pub type CredMap<'a> = HashMap<&'static str, &'a str>;
 
-pub trait IntoCredMap: Send {
+pub trait IntoCredMap: Debug + Send {
     fn into_cred_map(&self) -> CredMap;
 }
 
