@@ -1,6 +1,13 @@
 pub mod client;
+pub mod subcmd;
 pub mod ui;
 pub mod util;
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[clap(rename_all = "lower")]
+pub enum Platform {
+    AtCoder,
+}
 
 #[cfg(test)]
 mod testconfig;
