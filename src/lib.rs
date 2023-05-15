@@ -1,4 +1,5 @@
 pub mod client;
+pub mod ui;
 pub mod util;
 
 #[cfg(test)]

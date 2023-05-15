@@ -58,7 +58,7 @@ pub trait Client {
 
     async fn login(&mut self, cred: Self::Credential) -> Result<()>;
 
-    fn ask_credential(&self) -> Result<&Self::Credential>;
+    fn ask_credential(&self) -> Result<Self::Credential>;
 
     async fn logout(&mut self) -> Result<()>;
 

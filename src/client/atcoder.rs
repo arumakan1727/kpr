@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::common::*;
-use crate::{errors::*, util};
+use crate::{errors::*, ui, util};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::DateTime;
@@ -194,8 +194,10 @@ impl Client for AtCoderClient {
         }
     }
 
-    fn ask_credential(&self) -> Result<&Self::Credential> {
-        todo!()
+    fn ask_credential(&self) -> Result<Self::Credential> {
+        let username = ui::ask_text("enter username").map_err(|e| anyhow!(e))?;
+        let password = ui::ask_password("enter password").map_err(|e| anyhow!(e))?;
+        Ok(Self::Credential { username, password })
     }
 
     async fn logout(&mut self) -> Result<()> {
