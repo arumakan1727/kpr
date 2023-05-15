@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::common::*;
-use crate::errors::*;
+use crate::{errors::*, util};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::DateTime;
@@ -24,16 +24,6 @@ static RE_PROBLEM_URL_PATH: Lazy<Regex> =
     lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/([[:alnum:]]+)_([[:alnum:]]+)/?$");
 
 const HOST: &'static str = "atcoder.jp";
-
-fn complete_url(link: &str) -> String {
-    let link = link.trim_end_matches("/");
-    if link.starts_with("/") {
-        format!("https://{}{}", HOST, link)
-    } else {
-        assert!(link.starts_with("https://"));
-        link.to_owned()
-    }
-}
 
 fn extract_testcase(pre: ElementRef) -> String {
     let node = pre.first_child().unwrap().value();
@@ -112,7 +102,7 @@ impl Client for AtCoderClient {
                 .map(|(i, node)| {
                     let el1 = node.select(&sel_short_title).next().unwrap();
                     let el2 = node.select(&sel_long_title).next().unwrap();
-                    let url = complete_url(el1.value().attr("href").unwrap());
+                    let url = util::complete_url(el1.value().attr("href").unwrap(), HOST);
                     ProblemInfo {
                         url,
                         ord: (i + 1) as u32,
