@@ -8,7 +8,8 @@ struct Cli {
     cmd: Subcommand,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Cli::parse();
-    args.cmd.exec();
+    args.cmd.exec().await;
 }

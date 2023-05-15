@@ -6,10 +6,10 @@ pub enum Subcommand {
 }
 
 impl Subcommand {
-    pub fn exec(&self) {
+    pub async fn exec(&self) -> () {
         use Subcommand::*;
         match self {
-            Login(args) => login::exec(args),
+            Login(args) => login::exec(args).await,
         }
     }
 }
