@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use super::common::*;
 use crate::errors::*;
+use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::DateTime;
 use lazy_regex::{lazy_regex, Lazy, Regex};
+use reqwest::StatusCode;
 use scraper::{ElementRef, Html, Selector};
 
 pub struct AtCoderClient {
@@ -22,6 +26,7 @@ static RE_PROBLEM_URL_PATH: Lazy<Regex> =
 const HOST: &'static str = "atcoder.jp";
 
 fn complete_url(link: &str) -> String {
+    let link = link.trim_end_matches("/");
     if link.starts_with("/") {
         format!("https://{}{}", HOST, link)
     } else {
@@ -38,7 +43,11 @@ fn extract_testcase(pre: ElementRef) -> String {
 impl AtCoderClient {
     pub fn new() -> Self {
         Self {
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .cookie_store(true)
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .unwrap(),
         }
     }
 }
@@ -165,8 +174,43 @@ impl Client for AtCoderClient {
         Ok(cases)
     }
 
-    fn login(&mut self, cred: &Self::Credential) -> Result<()> {
-        todo!()
+    async fn login(&mut self, cred: Self::Credential) -> Result<()> {
+        const LOGIN_URL: &str = "https://atcoder.jp/login";
+        const LOGIN_SUCCESS_URL: &str = "https://atcoder.jp/home";
+
+        let csrf_token = {
+            let html = self.http.get(LOGIN_URL).send().await?.text().await?;
+            let doc = Html::parse_document(&html);
+            let sel = Selector::parse("#main-container form > input[name='csrf_token']").unwrap();
+            let el = doc.select(&sel).next().unwrap().value();
+            el.attr("value").unwrap().to_owned()
+        };
+        let resp = {
+            let mut params = HashMap::new();
+            params.insert("username", cred.username);
+            params.insert("password", cred.password);
+            params.insert("csrf_token", csrf_token);
+            self.http.post(LOGIN_URL).form(&params).send().await?
+        };
+        let location = {
+            let expected = StatusCode::FOUND;
+            let got = resp.status();
+            ensure!(
+                got == expected,
+                "Unexpected response code: {} (expected {})",
+                got,
+                expected
+            );
+            let bytes = resp.headers().get("Location").unwrap();
+            bytes.to_str().unwrap().to_owned()
+        };
+
+        let redirected_url = complete_url(&location);
+        match redirected_url.as_str() {
+            LOGIN_SUCCESS_URL => Ok(()),
+            LOGIN_URL => Err(anyhow!("Wrong username or password")),
+            _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
+        }
     }
 
     fn ask_credential(&self) -> Result<&Self::Credential> {

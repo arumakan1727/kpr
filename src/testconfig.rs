@@ -8,7 +8,7 @@ pub(crate) struct TestConfig {
 }
 
 impl TestConfig {
-   pub fn from_env() -> Result<Self> {
+    pub fn from_env() -> Result<Self> {
         envy::from_env::<Self>().context("TestConfig::from_env(): Failed to load from env")
     }
 }

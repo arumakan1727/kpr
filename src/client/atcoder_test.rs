@@ -206,13 +206,13 @@ async fn fetch_abc003_4_testcases() {
 
 #[tokio::test]
 async fn login_should_be_success() {
-    let mut cli = AtCoderClient::new();
-    let cfg = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
+    let TestConfig {
+        atcoder_username: username,
+        atcoder_password: password,
+    } = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
 
-    cli.login(Cred {
-        username: cfg.atcoder_username,
-        password: cfg.atcoder_password,
-    })
-    .await
-    .unwrap_or_else(|e| panic!("{:?}", e));
+    let mut cli = AtCoderClient::new();
+    cli.login(Cred { username, password })
+        .await
+        .unwrap_or_else(|e| panic!("{:?}", e));
 }
