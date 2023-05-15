@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use super::common::*;
 use crate::{errors::*, ui, util};
-use anyhow::anyhow;
 use async_trait::async_trait;
 use chrono::DateTime;
 use lazy_regex::{lazy_regex, Lazy, Regex};
