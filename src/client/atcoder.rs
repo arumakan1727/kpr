@@ -194,8 +194,25 @@ impl Client for AtCoderClient {
         todo!()
     }
 
-    fn logout(&mut self) -> Result<()> {
-        todo!()
+    async fn logout(&mut self) -> Result<()> {
+        let csrf_token = {
+            let html = self.http.get(HOME_URL).send().await?.text().await?;
+            let doc = Html::parse_document(&html);
+            let sel = Selector::parse("#main-div form > input[name='csrf_token']").unwrap();
+            let el = doc.select(&sel).next().unwrap().value();
+            el.attr("value").unwrap().to_owned()
+        };
+        let resp = {
+            let mut params = HashMap::new();
+            params.insert("csrf_token", csrf_token);
+            self.http.post(LOGOUT_URL).form(&params).send().await?
+        };
+        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+        let redirected_url = util::complete_url(&location, HOST);
+        match redirected_url.as_str() {
+            HOME_URL => Ok(()),
+            _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
+        }
     }
 
     async fn submit(

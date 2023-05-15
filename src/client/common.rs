@@ -53,7 +53,7 @@ pub trait Client {
 
     fn ask_credential(&self) -> Result<&Self::Credential>;
 
-    fn logout(&mut self) -> Result<()>;
+    async fn logout(&mut self) -> Result<()>;
 
     async fn submit(
         &self,

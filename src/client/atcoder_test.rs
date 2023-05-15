@@ -205,14 +205,17 @@ async fn fetch_abc003_4_testcases() {
 }
 
 #[tokio::test]
-async fn login_should_be_success() {
+async fn login_and_logout() {
     let TestConfig {
         atcoder_username: username,
         atcoder_password: password,
     } = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
 
     let mut cli = AtCoderClient::new();
+
     cli.login(Cred { username, password })
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
+
+    cli.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 }
