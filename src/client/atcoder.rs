@@ -19,11 +19,13 @@ pub struct Cred {
 }
 
 static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
-
 static RE_PROBLEM_URL_PATH: Lazy<Regex> =
     lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/([[:alnum:]]+)_([[:alnum:]]+)/?$");
 
-const HOST: &'static str = "atcoder.jp";
+pub const HOST: &'static str = "atcoder.jp";
+pub const HOME_URL: &'static str = "https://atcoder.jp/home";
+pub const LOGIN_URL: &'static str = "https://atcoder.jp/login";
+pub const LOGOUT_URL: &'static str = "https://atcoder.jp/logout";
 
 fn extract_testcase(pre: ElementRef) -> String {
     let node = pre.first_child().unwrap().value();
@@ -165,9 +167,6 @@ impl Client for AtCoderClient {
     }
 
     async fn login(&mut self, cred: Self::Credential) -> Result<()> {
-        const LOGIN_URL: &str = "https://atcoder.jp/login";
-        const LOGIN_SUCCESS_URL: &str = "https://atcoder.jp/home";
-
         let csrf_token = {
             let html = self.http.get(LOGIN_URL).send().await?.text().await?;
             let doc = Html::parse_document(&html);
@@ -182,22 +181,10 @@ impl Client for AtCoderClient {
             params.insert("csrf_token", csrf_token);
             self.http.post(LOGIN_URL).form(&params).send().await?
         };
-        let location = {
-            let expected = StatusCode::FOUND;
-            let got = resp.status();
-            ensure!(
-                got == expected,
-                "Unexpected response code: {} (expected {})",
-                got,
-                expected
-            );
-            let bytes = resp.headers().get("Location").unwrap();
-            bytes.to_str().unwrap().to_owned()
-        };
-
-        let redirected_url = complete_url(&location);
+        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+        let redirected_url = util::complete_url(&location, HOST);
         match redirected_url.as_str() {
-            LOGIN_SUCCESS_URL => Ok(()),
+            HOME_URL => Ok(()),
             LOGIN_URL => Err(anyhow!("Wrong username or password")),
             _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
         }
