@@ -229,6 +229,22 @@ async fn fetch_abc086_a_testcases() {
     );
 }
 
+#[test]
+fn serialize_auth_data() {
+    let cli = AtCoderClient::new().with_auth(AuthCookie {
+        session_id: Some("test_session_id".to_owned()),
+    });
+    let json = cli.auth_data().to_json();
+    assert_eq!(json, r#"{"session_id":"test_session_id"}"#);
+}
+
+#[test]
+fn serialize_null_auth_data() {
+    let cli = AtCoderClient::new();
+    let json = cli.auth_data().to_json();
+    assert_eq!(json, r#"{"session_id":null}"#);
+}
+
 #[tokio::test]
 async fn login_and_submit_and_logout() {
     let TestConfig {

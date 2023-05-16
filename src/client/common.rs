@@ -52,8 +52,14 @@ pub trait IntoCredMap: Debug + Send {
     fn into_cred_map(&self) -> CredMap;
 }
 
+pub trait JsonableAuth {
+    fn to_json(&self) -> String;
+}
+
 #[async_trait]
 pub trait Client {
+    fn platform_name(&self) -> &'static str;
+
     fn is_contest_url(&self, url: &Url) -> bool;
 
     fn is_problem_url(&self, url: &Url) -> bool;
@@ -63,6 +69,8 @@ pub trait Client {
     async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
 
     async fn login(&mut self, cred: Box<dyn IntoCredMap>) -> Result<()>;
+
+    fn auth_data(&self) -> &dyn JsonableAuth;
 
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>>;
 

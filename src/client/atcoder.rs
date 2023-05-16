@@ -7,9 +7,22 @@ use chrono::DateTime;
 use lazy_regex::{lazy_regex, Lazy, Regex};
 use reqwest::StatusCode;
 use scraper::{ElementRef, Html, Selector};
+use serde::{Deserialize, Serialize};
 
 pub struct AtCoderClient {
     http: reqwest::Client,
+    auth: AuthCookie,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AuthCookie {
+    pub session_id: Option<String>,
+}
+
+impl JsonableAuth for AuthCookie {
+    fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,12 +62,26 @@ impl AtCoderClient {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .unwrap(),
+            auth: AuthCookie { session_id: None },
         }
+    }
+
+    pub fn with_auth(mut self, a: AuthCookie) -> Self {
+        self.auth = a;
+        self
+    }
+
+    pub fn set_auth(&mut self, a: AuthCookie) {
+        self.auth = a;
     }
 }
 
 #[async_trait]
 impl Client for AtCoderClient {
+    fn platform_name(&self) -> &'static str {
+        "atcoder"
+    }
+
     fn is_contest_url(&self, url: &Url) -> bool {
         url.scheme() == "https"
             && url.host_str() == Some(HOST)
@@ -197,6 +224,10 @@ impl Client for AtCoderClient {
             LOGIN_URL => Err(anyhow!("Wrong username or password")),
             _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
         }
+    }
+
+    fn auth_data(&self) -> &dyn JsonableAuth {
+        &self.auth as &dyn JsonableAuth
     }
 
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>> {
