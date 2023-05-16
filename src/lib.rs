@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub mod client;
 pub mod cmd;
 pub mod config;
@@ -8,6 +10,12 @@ pub mod util;
 #[clap(rename_all = "lower")]
 pub enum Platform {
     AtCoder,
+}
+
+impl fmt::Display for Platform {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[cfg(test)]

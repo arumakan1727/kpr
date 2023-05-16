@@ -17,7 +17,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
 
     let mut cli = new_client(args.platform, &cfg);
     if cli.is_logged_in() {
-        eprintln!("Already logged in to {:?}", args.platform);
+        eprintln!("Already logged in to {}", args.platform);
         exit(1);
     }
 
@@ -37,7 +37,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
     });
     match res {
         Ok(()) => {
-            eprintln!("Successful login to {:?}", args.platform);
+            eprintln!("Successful login to {}", args.platform);
             exit(0);
         }
         Err(e) => {
