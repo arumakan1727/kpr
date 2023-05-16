@@ -1,6 +1,8 @@
 use chrono::Local;
 use chrono::TimeZone;
+use once_cell::sync::Lazy;
 
+use crate::errors::Result;
 use crate::testconfig::TestConfig;
 
 use super::atcoder::*;
@@ -245,6 +247,22 @@ fn serialize_null_auth_data() {
     assert_eq!(json, r#"{"session_id":null}"#);
 }
 
+static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006"));
+
+async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
+    cli.submit(
+        &Url::parse("https://atcoder.jp/contests/abs/tasks/abc086_a").unwrap(),
+        &PYTHON,
+        [
+            "a, b = map(int, input().split())",
+            "print(('Even', 'Odd')[a * b & 1])",
+        ]
+        .join("\n")
+        .as_ref(),
+    )
+    .await
+}
+
 #[tokio::test]
 async fn login_and_submit_and_logout() {
     let TestConfig {
@@ -258,18 +276,40 @@ async fn login_and_submit_and_logout() {
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
 
-    cli.submit(
-        &Url::parse("https://atcoder.jp/contests/abs/tasks/abc086_a").unwrap(),
-        &PgLang::new("Python (3.8.2)", "4006"),
-        [
-            "a, b = map(int, input().split())",
-            "print(('Even', 'Odd')[a * b & 1])",
-        ]
-        .join("\n")
-        .as_ref(),
-    )
-    .await
-    .unwrap_or_else(|e| panic!("{:?}", e));
+    submit_abc086_a(&cli)
+        .await
+        .unwrap_or_else(|e| panic!("{:?}", e));
 
     cli.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
+}
+
+#[tokio::test]
+async fn login_with_wrong_password_should_be_fail() {
+    let mut cli = AtCoderClient::new();
+    let username = "test";
+    let password = "test";
+    let err = cli
+        .login(Box::new(Cred {
+            username: username.to_owned(),
+            password: password.to_owned(),
+        }))
+        .await
+        .err()
+        .unwrap();
+    match err.downcast_ref::<ClientError>() {
+        Some(ClientError::WrongCredential { fields }) => {
+            assert_eq!(fields, &"username or password")
+        }
+        _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
+    };
+}
+
+#[tokio::test]
+async fn submit_without_logined_should_be_fail() {
+    let cli = AtCoderClient::new();
+    let err = submit_abc086_a(&cli).await.err().unwrap();
+    match err.downcast_ref::<ClientError>() {
+        Some(ClientError::NeedLogin) => (),
+        _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
+    }
 }

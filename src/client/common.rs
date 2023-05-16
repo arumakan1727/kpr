@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Debug};
 use crate::errors::Result;
 use async_trait::async_trait;
 use chrono::DateTime;
+use thiserror::Error;
 
 pub use reqwest::Url;
 
@@ -77,4 +78,13 @@ pub trait Client {
     async fn logout(&mut self) -> Result<()>;
 
     async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()>;
+}
+
+#[derive(Error, Debug)]
+pub enum ClientError {
+    #[error("Wrong {fields}")]
+    WrongCredential { fields: &'static str },
+
+    #[error("Need login")]
+    NeedLogin,
 }

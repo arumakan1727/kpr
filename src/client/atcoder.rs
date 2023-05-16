@@ -217,13 +217,28 @@ impl Client for AtCoderClient {
             params.insert("csrf_token", &csrf_token);
             self.http.post(LOGIN_URL).form(&params).send().await?
         };
-        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-        let redirected_url = util::complete_url(&location, HOST);
+        let redirected_url = {
+            let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+            util::complete_url(&location, HOST)
+        };
         match redirected_url.as_str() {
-            HOME_URL => Ok(()),
-            LOGIN_URL => Err(anyhow!("Wrong username or password")),
-            _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
-        }
+            HOME_URL => (),
+            LOGIN_URL => bail!(ClientError::WrongCredential {
+                fields: "username or password"
+            }),
+            _ => bail!("Unexpected redirect url: {}", redirected_url),
+        };
+
+        let session_id = resp
+            .cookies()
+            .find(|c| c.name() == "REVEL_SESSION")
+            .unwrap()
+            .value()
+            .to_owned();
+        self.set_auth(AuthCookie {
+            session_id: Some(session_id),
+        });
+        Ok(())
     }
 
     fn auth_data(&self) -> &dyn JsonableAuth {
@@ -249,8 +264,10 @@ impl Client for AtCoderClient {
             params.insert("csrf_token", csrf_token);
             self.http.post(LOGOUT_URL).form(&params).send().await?
         };
-        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-        let redirected_url = util::complete_url(&location, HOST);
+        let redirected_url = {
+            let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+            util::complete_url(&location, HOST)
+        };
         match redirected_url.as_str() {
             HOME_URL => Ok(()),
             _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
@@ -285,12 +302,14 @@ impl Client for AtCoderClient {
         };
         let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
         let submissions_path = format!("/contests/{}/submissions/me", contest_name);
-        ensure!(
-            location == submissions_path,
-            "Unexpected redirect path: {} (expected {})",
-            location,
-            submissions_path
-        );
-        Ok(())
+        match location.as_str() {
+            path if path == submissions_path => Ok(()),
+            path if path.starts_with("/login") => Err(anyhow!(ClientError::NeedLogin)),
+            _ => Err(anyhow!(
+                "Unexpected redirect path: {} (expected {})",
+                location,
+                submissions_path
+            )),
+        }
     }
 }
