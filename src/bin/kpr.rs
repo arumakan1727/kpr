@@ -1,15 +1,8 @@
 use clap::Parser;
-use kyopro_cli::subcmd::Subcommand;
-
-#[derive(Debug, Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    cmd: Subcommand,
-}
+use kyopro_cli::cmd::GlobalArgs;
 
 #[tokio::main]
 async fn main() {
-    let args = Cli::parse();
-    args.cmd.exec().await;
+    let app = GlobalArgs::parse();
+    app.exec_subcmd().await;
 }

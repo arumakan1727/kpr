@@ -286,6 +286,18 @@ impl Client for AtCoderClient {
         Box::new(self.get_auth())
     }
 
+    fn is_logged_in(&self) -> bool {
+        self.get_auth().session_id.is_some()
+    }
+
+    fn set_auth_data_from_json(&mut self, json: &str) -> Result<()> {
+        AuthCookie::from_json(json)
+            .map_err(|e| anyhow!(e))?
+            .session_id
+            .map(|sid| self.set_auth(&sid));
+        Ok(())
+    }
+
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>> {
         let username = ui::ask_text("enter username").map_err(|e| anyhow!(e))?;
         let password = ui::ask_password("enter password").map_err(|e| anyhow!(e))?;

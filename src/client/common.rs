@@ -73,6 +73,10 @@ pub trait Client {
 
     fn auth_data(&self) -> Box<dyn JsonableAuth>;
 
+    fn is_logged_in(&self) -> bool;
+
+    fn set_auth_data_from_json(&mut self, json: &str) -> Result<()>;
+
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>>;
 
     async fn logout(&mut self) -> Result<()>;

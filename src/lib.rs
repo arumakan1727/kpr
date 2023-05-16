@@ -1,5 +1,6 @@
 pub mod client;
-pub mod subcmd;
+pub mod cmd;
+pub mod config;
 pub mod ui;
 pub mod util;
 
