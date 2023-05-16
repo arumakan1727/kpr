@@ -264,23 +264,31 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
 }
 
 #[tokio::test]
-async fn login_and_submit_and_logout() {
-    let TestConfig {
-        atcoder_username: username,
-        atcoder_password: password,
-    } = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
+async fn senario_login_submit_logout() {
+    let token_json = {
+        let mut cli1 = AtCoderClient::new();
+        let TestConfig {
+            atcoder_username: username,
+            atcoder_password: password,
+        } = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
+        cli1.login(Box::new(Cred { username, password }))
+            .await
+            .unwrap_or_else(|e| panic!("{:?}", e));
 
-    let mut cli = AtCoderClient::new();
+        let auth = cli1.get_auth();
+        assert!(auth.session_id.as_ref().unwrap().len() > 1);
+        auth.to_json()
+    };
 
-    cli.login(Box::new(Cred { username, password }))
+    let mut cli2 = AtCoderClient::new().with_auth(AuthCookie::from_json(&token_json).unwrap());
+    submit_abc086_a(&cli2)
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
 
-    submit_abc086_a(&cli)
-        .await
-        .unwrap_or_else(|e| panic!("{:?}", e));
+    cli2.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 
-    cli.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
+    let json = cli2.auth_data().to_json();
+    assert_eq!(json, r#"{"session_id":null}"#);
 }
 
 #[tokio::test]
@@ -298,7 +306,10 @@ async fn login_with_wrong_password_should_be_fail() {
         .unwrap();
     match err.downcast_ref::<ClientError>() {
         Some(ClientError::WrongCredential { fields }) => {
-            assert_eq!(fields, &"username or password")
+            assert_eq!(fields, &"username or password");
+            let errmsg = err.to_string();
+            assert!(!errmsg.contains(username));
+            assert!(!errmsg.contains(password));
         }
         _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
     };

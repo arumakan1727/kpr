@@ -1,17 +1,21 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use super::common::*;
 use crate::{errors::*, ui, util};
 use async_trait::async_trait;
 use chrono::DateTime;
+use cookie::Cookie;
 use lazy_regex::{lazy_regex, Lazy, Regex};
-use reqwest::StatusCode;
+use reqwest::{
+    cookie::{CookieStore as _, Jar},
+    StatusCode,
+};
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
 
 pub struct AtCoderClient {
     http: reqwest::Client,
-    auth: AuthCookie,
+    jar: Arc<Jar>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,9 +23,24 @@ pub struct AuthCookie {
     pub session_id: Option<String>,
 }
 
+impl AuthCookie {
+    pub fn empty() -> Self {
+        AuthCookie { session_id: None }
+    }
+    pub fn from_json(s: &str) -> serde_json::Result<Self> {
+        serde_json::from_str(s)
+    }
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+    pub fn revoke(&mut self) {
+        self.session_id = None;
+    }
+}
+
 impl JsonableAuth for AuthCookie {
     fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        self.to_json()
     }
 }
 
@@ -44,10 +63,13 @@ static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+
 static RE_PROBLEM_URL_PATH: Lazy<Regex> =
     lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/(([[:alnum:]]+)_([[:alnum:]]+))/?$");
 
-pub const HOST: &'static str = "atcoder.jp";
+pub const DOMAIN: &'static str = "atcoder.jp";
 pub const HOME_URL: &'static str = "https://atcoder.jp/home";
 pub const LOGIN_URL: &'static str = "https://atcoder.jp/login";
 pub const LOGOUT_URL: &'static str = "https://atcoder.jp/logout";
+pub static URL: Lazy<Url> = Lazy::new(|| Url::parse("https://atcoder.jp").unwrap());
+
+const COOKIE_KEY_SESSION_ID: &'static str = "REVEL_SESSION";
 
 fn extract_testcase(pre: ElementRef) -> String {
     let node = pre.first_child().unwrap().value();
@@ -56,23 +78,52 @@ fn extract_testcase(pre: ElementRef) -> String {
 
 impl AtCoderClient {
     pub fn new() -> Self {
+        let jar = Arc::new(Jar::default());
         Self {
             http: reqwest::Client::builder()
                 .cookie_store(true)
+                .cookie_provider(jar.clone())
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .unwrap(),
-            auth: AuthCookie { session_id: None },
+            jar,
         }
     }
 
     pub fn with_auth(mut self, a: AuthCookie) -> Self {
-        self.auth = a;
+        match a.session_id {
+            Some(sid) => self.set_auth(&sid),
+            None => self.revoke_auth(),
+        }
         self
     }
 
-    pub fn set_auth(&mut self, a: AuthCookie) {
-        self.auth = a;
+    pub fn get_auth(&self) -> AuthCookie {
+        let raw_cookies = match self.jar.cookies(&URL) {
+            Some(s) => s,
+            None => return AuthCookie { session_id: None },
+        };
+        let raw_cookies = raw_cookies.to_str().unwrap();
+        let cookie = Cookie::split_parse(raw_cookies).find_map(|c| match c {
+            Ok(c) if c.name() == COOKIE_KEY_SESSION_ID && !c.value().is_empty() => Some(c),
+            _ => None,
+        });
+        AuthCookie {
+            session_id: cookie.map(|c| c.value().to_owned()),
+        }
+    }
+
+    pub fn set_auth(&mut self, session_id: &str) {
+        let cookie = format!(
+            "{}={}; Path=/; HttpOnly; Secure; Domain={}",
+            COOKIE_KEY_SESSION_ID, session_id, DOMAIN,
+        );
+        self.jar.add_cookie_str(&cookie, &URL);
+    }
+
+    pub fn revoke_auth(&mut self) {
+        let cookie = format!("{}=", COOKIE_KEY_SESSION_ID);
+        self.jar.add_cookie_str(&cookie, &URL);
     }
 }
 
@@ -84,13 +135,13 @@ impl Client for AtCoderClient {
 
     fn is_contest_url(&self, url: &Url) -> bool {
         url.scheme() == "https"
-            && url.host_str() == Some(HOST)
+            && url.host_str() == Some(DOMAIN)
             && RE_CONTEST_URL_PATH.is_match(url.path())
     }
 
     fn is_problem_url(&self, url: &Url) -> bool {
         url.scheme() == "https"
-            && url.host_str() == Some(HOST)
+            && url.host_str() == Some(DOMAIN)
             && RE_PROBLEM_URL_PATH.is_match(url.path())
     }
 
@@ -138,7 +189,7 @@ impl Client for AtCoderClient {
                 .map(|(i, node)| {
                     let el1 = node.select(&sel_short_title).next().unwrap();
                     let el2 = node.select(&sel_long_title).next().unwrap();
-                    let url = util::complete_url(el1.value().attr("href").unwrap(), HOST);
+                    let url = util::complete_url(el1.value().attr("href").unwrap(), DOMAIN);
                     ProblemInfo {
                         url,
                         ord: (i + 1) as u32,
@@ -219,7 +270,7 @@ impl Client for AtCoderClient {
         };
         let redirected_url = {
             let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-            util::complete_url(&location, HOST)
+            util::complete_url(&location, DOMAIN)
         };
         match redirected_url.as_str() {
             HOME_URL => (),
@@ -228,21 +279,11 @@ impl Client for AtCoderClient {
             }),
             _ => bail!("Unexpected redirect url: {}", redirected_url),
         };
-
-        let session_id = resp
-            .cookies()
-            .find(|c| c.name() == "REVEL_SESSION")
-            .unwrap()
-            .value()
-            .to_owned();
-        self.set_auth(AuthCookie {
-            session_id: Some(session_id),
-        });
         Ok(())
     }
 
-    fn auth_data(&self) -> &dyn JsonableAuth {
-        &self.auth as &dyn JsonableAuth
+    fn auth_data(&self) -> Box<dyn JsonableAuth> {
+        Box::new(self.get_auth())
     }
 
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>> {
@@ -264,9 +305,10 @@ impl Client for AtCoderClient {
             params.insert("csrf_token", csrf_token);
             self.http.post(LOGOUT_URL).form(&params).send().await?
         };
+        self.revoke_auth();
         let redirected_url = {
             let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-            util::complete_url(&location, HOST)
+            util::complete_url(&location, DOMAIN)
         };
         match redirected_url.as_str() {
             HOME_URL => Ok(()),
@@ -275,6 +317,7 @@ impl Client for AtCoderClient {
     }
 
     async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
+        ensure!(self.get_auth().session_id.is_some(), ClientError::NeedLogin);
         let csrf_token = {
             let url = problem_url.clone();
             let html = self.http.get(url).send().await?.text().await?;

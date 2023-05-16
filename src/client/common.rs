@@ -71,7 +71,7 @@ pub trait Client {
 
     async fn login(&mut self, cred: Box<dyn IntoCredMap>) -> Result<()>;
 
-    fn auth_data(&self) -> &dyn JsonableAuth;
+    fn auth_data(&self) -> Box<dyn JsonableAuth>;
 
     fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>>;
 
