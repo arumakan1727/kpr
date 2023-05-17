@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 
 pub mod login;
+pub mod logout;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
@@ -17,6 +18,7 @@ pub struct GlobalArgs {
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
     Login(login::Args),
+    Logout(logout::Args),
 }
 
 impl GlobalArgs {
@@ -24,6 +26,7 @@ impl GlobalArgs {
         use Subcommand::*;
         match &self.subcmd {
             Login(args) => login::exec(args, self).await,
+            Logout(args) => logout::exec(args, self).await,
         }
     }
 }

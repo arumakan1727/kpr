@@ -1,21 +1,15 @@
-use std::fmt;
-
 pub mod client;
 pub mod cmd;
 pub mod config;
 pub mod ui;
 pub mod util;
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum, strum::Display, strum::EnumIter,
+)]
 #[clap(rename_all = "lower")]
 pub enum Platform {
     AtCoder,
-}
-
-impl fmt::Display for Platform {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 #[cfg(test)]

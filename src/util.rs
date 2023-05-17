@@ -1,3 +1,5 @@
+use std::{collections::HashSet, hash::Hash};
+
 use crate::errors::*;
 use reqwest::{Response, StatusCode};
 
@@ -38,4 +40,13 @@ pub fn extract_location_header(resp: &Response, expected: StatusCode) -> Result<
     );
     let bytes = resp.headers().get("Location").unwrap();
     Ok(bytes.to_str().unwrap().to_owned())
+}
+
+pub fn dedup<T>(mut v: Vec<T>) -> Vec<T>
+where
+    T: Hash + Eq + Copy,
+{
+    let mut set = HashSet::new();
+    v.retain(|&x| set.insert(x));
+    v
 }
