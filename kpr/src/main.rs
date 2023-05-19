@@ -1,5 +1,5 @@
 use clap::Parser;
-use kyopro_cli::cmd::GlobalArgs;
+use kpr::cmd::GlobalArgs;
 
 #[tokio::main]
 async fn main() {

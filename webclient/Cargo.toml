@@ -1,0 +1,29 @@
+[package]
+name = "kpr-webclient"
+version = "0.1.0"
+description = """
+Web client library for AtCoder, Codeforces, etc.
+"""
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = { workspace = true }
+chrono = { workspace = true }
+cookie = { workspace = true }
+lazy-regex = { workspace = true }
+reqwest = {  workspace = true  }
+scraper = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+rand = "0.8.5"
+envy = { workspace = true }
+once_cell = { workspace = true }

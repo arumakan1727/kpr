@@ -1,12 +1,22 @@
+use std::thread;
+use std::time::Duration;
+
 use chrono::Local;
 use chrono::TimeZone;
 use once_cell::sync::Lazy;
+use rand::Rng;
 
-use crate::errors::Result;
-use crate::testconfig::TestConfig;
+use kpr_webclient::atcoder::*;
+use kpr_webclient::*;
 
-use super::atcoder::*;
-use super::common::*;
+mod testconfig;
+use testconfig::TestConfig;
+
+fn sleep_random_ms() {
+    let mut rng = rand::thread_rng();
+    let ms = Duration::from_millis(rng.gen_range(200..1000));
+    thread::sleep(ms);
+}
 
 #[test]
 fn should_be_contest_url() {
@@ -122,6 +132,9 @@ fn should_not_be_problem_url() {
 
 #[tokio::test]
 async fn fetch_abc001_info() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     let url = "https://atcoder.jp/contests/abc001";
     let cli = AtCoderClient::new();
     let info = cli
@@ -173,6 +186,9 @@ async fn fetch_abc001_info() {
 
 #[tokio::test]
 async fn fetch_abc003_4_testcases() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     let url = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
     let cli = AtCoderClient::new();
     let testcases = cli
@@ -208,6 +224,9 @@ async fn fetch_abc003_4_testcases() {
 
 #[tokio::test]
 async fn fetch_abc086_a_testcases() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     let url = "https://atcoder.jp/contests/abs/tasks/abc086_a";
     let cli = AtCoderClient::new();
     let testcases = cli
@@ -236,22 +255,27 @@ fn serialize_auth_data() {
     let cli = AtCoderClient::new().with_auth(AuthCookie {
         session_id: Some("test_session_id".to_owned()),
     });
-    let json = cli.auth_data().to_json();
+    let json = cli.export_authtoken_as_json();
     assert_eq!(json, r#"{"session_id":"test_session_id"}"#);
 }
 
 #[test]
 fn serialize_null_auth_data() {
     let cli = AtCoderClient::new();
-    let json = cli.auth_data().to_json();
+    let json = cli.export_authtoken_as_json();
     assert_eq!(json, r#"{"session_id":null}"#);
 }
 
 static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006"));
 
+const URL_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+
 async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     cli.submit(
-        &Url::parse("https://atcoder.jp/contests/abs/tasks/abc086_a").unwrap(),
+        &Url::parse(URL_ABC086_A).unwrap(),
         &PYTHON,
         [
             "a, b = map(int, input().split())",
@@ -265,48 +289,59 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
 
 #[tokio::test]
 async fn senario_login_submit_logout() {
-    let token_json = {
+    // Avoid DDos attack
+    sleep_random_ms();
+
+    let auth_json = {
         let mut cli1 = AtCoderClient::new();
         let TestConfig {
             atcoder_username: username,
             atcoder_password: password,
-        } = TestConfig::from_env().unwrap_or_else(|e| panic!("{:?}", e));
-        cli1.login(Box::new(Cred { username, password }))
+        } = TestConfig::from_env();
+        cli1.login(AtCoderCred { username, password }.into())
             .await
             .unwrap_or_else(|e| panic!("{:?}", e));
 
-        let auth = cli1.get_auth();
-        assert!(auth.session_id.as_ref().unwrap().len() > 1);
-        auth.to_json()
+        let auth_json = cli1.export_authtoken_as_json();
+        assert_ne!(auth_json, r#"{"session_id":null}"#);
+        auth_json
     };
 
-    let mut cli2 = AtCoderClient::new().with_auth(AuthCookie::from_json(&token_json).unwrap());
+    let mut cli2 = AtCoderClient::new();
+    cli2.load_authtoken_json(&auth_json).unwrap();
+
     submit_abc086_a(&cli2)
         .await
         .unwrap_or_else(|e| panic!("{:?}", e));
 
     cli2.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 
-    let json = cli2.auth_data().to_json();
+    let json = cli2.export_authtoken_as_json();
     assert_eq!(json, r#"{"session_id":null}"#);
 }
 
 #[tokio::test]
 async fn login_with_wrong_password_should_be_fail() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     let mut cli = AtCoderClient::new();
     let username = "test";
     let password = "test";
     let err = cli
-        .login(Box::new(Cred {
-            username: username.to_owned(),
-            password: password.to_owned(),
-        }))
+        .login(
+            AtCoderCred {
+                username: username.to_owned(),
+                password: password.to_owned(),
+            }
+            .into(),
+        )
         .await
         .err()
         .unwrap();
-    match err.downcast_ref::<ClientError>() {
-        Some(ClientError::WrongCredential { fields }) => {
-            assert_eq!(fields, &"username or password");
+    match err {
+        Error::WrongCredential { fields } => {
+            assert_eq!(fields, "username or password");
             let errmsg = err.to_string();
             assert!(!errmsg.contains(username));
             assert!(!errmsg.contains(password));
@@ -317,10 +352,15 @@ async fn login_with_wrong_password_should_be_fail() {
 
 #[tokio::test]
 async fn submit_without_logined_should_be_fail() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
     let cli = AtCoderClient::new();
     let err = submit_abc086_a(&cli).await.err().unwrap();
-    match err.downcast_ref::<ClientError>() {
-        Some(ClientError::NeedLogin) => (),
+    match err {
+        Error::NeedLogin { requested_url } => {
+            assert_eq!(requested_url, URL_ABC086_A);
+        }
         _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
     }
 }

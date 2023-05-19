@@ -1,0 +1,22 @@
+[package]
+name = "kpr-core"
+version = "0.1.0"
+description = """
+Core library for kpr (kyopro-cli).
+"""
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kpr-webclient = { path = "../webclient/" }
+
+anyhow = { workspace = true }
+chrono = { workspace = true }
+dialoguer = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }

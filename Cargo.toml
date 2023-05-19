@@ -1,23 +1,21 @@
-[package]
-name = "kyopro-cli"
-version = "0.1.0"
-edition = "2021"
-default-run = "kpr"
-authors = ["Arumakan1727"]
-description = """
-CLI tool for Competitive Programming.
-It can download testcases, login, submit, and manage workspace for coding, etc. \
-"""
-
-[[bin]]
-name = "kpr"
+[workspace]
+members = [
+  "kpr",
+  "core",
+  "webclient",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[workspace.package]
+authors = ["Arumakan1727"]
+edition = "2021"
+repository = "https://github.com/arumakan1727/kyopro-cli"
+
+[workspace.dependencies]
 anyhow = "1.0.71"
 async-trait = "0.1.68"
-chrono = "0.4.24"
+chrono = { version = "0.4.24", features = ["serde"] }
 clap = { version = "4.2.7", features = ["derive"] }
 cookie = "0.17.0"
 dialoguer = "0.10.4"

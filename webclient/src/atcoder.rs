@@ -1,17 +1,27 @@
-use std::{collections::HashMap, sync::Arc};
-
-use super::common::*;
-use crate::{errors::*, ui, util};
 use async_trait::async_trait;
 use chrono::DateTime;
 use cookie::Cookie;
 use lazy_regex::{lazy_regex, Lazy, Regex};
-use reqwest::{
-    cookie::{CookieStore as _, Jar},
-    StatusCode,
-};
+use reqwest::cookie::{CookieStore as _, Jar};
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc};
+
+use crate::{error::*, model::*, util};
+
+macro_rules! bail {
+    ($e:expr) => {
+        return Err($e.into())
+    };
+}
+
+macro_rules! ensure {
+    ($cond:expr, $e:expr) => {
+        if !($cond) {
+            bail!($e);
+        }
+    };
+}
 
 pub struct AtCoderClient {
     http: reqwest::Client,
@@ -38,23 +48,17 @@ impl AuthCookie {
     }
 }
 
-impl JsonableAuth for AuthCookie {
-    fn to_json(&self) -> String {
-        self.to_json()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Cred {
+pub struct AtCoderCred {
     pub username: String,
     pub password: String,
 }
 
-impl IntoCredMap for Cred {
-    fn into_cred_map(&self) -> CredMap {
+impl From<AtCoderCred> for CredMap {
+    fn from(c: AtCoderCred) -> Self {
         let mut h = CredMap::new();
-        h.insert("username", &self.username);
-        h.insert("password", &self.password);
+        h.insert("username", c.username);
+        h.insert("password", c.password);
         h
     }
 }
@@ -129,8 +133,8 @@ impl AtCoderClient {
 
 #[async_trait]
 impl Client for AtCoderClient {
-    fn platform_name(&self) -> &'static str {
-        "atcoder"
+    fn platform(&self) -> Platform {
+        Platform::AtCoder
     }
 
     fn is_contest_url(&self, url: &Url) -> bool {
@@ -255,7 +259,21 @@ impl Client for AtCoderClient {
         Ok(cases)
     }
 
-    async fn login(&mut self, cred: Box<dyn IntoCredMap>) -> Result<()> {
+    fn credential_fields(&self) -> &'static [CredField] {
+        use CredFieldKind::*;
+        &[
+            CredField {
+                name: "username",
+                kind: Text,
+            },
+            CredField {
+                name: "password",
+                kind: Password,
+            },
+        ]
+    }
+
+    async fn login(&mut self, cred: CredMap) -> Result<()> {
         let csrf_token = {
             let html = self.http.get(LOGIN_URL).send().await?.text().await?;
             let doc = Html::parse_document(&html);
@@ -264,44 +282,38 @@ impl Client for AtCoderClient {
             el.attr("value").unwrap().to_owned()
         };
         let resp = {
-            let mut params = cred.into_cred_map();
-            params.insert("csrf_token", &csrf_token);
+            let mut params = cred;
+            params.insert("csrf_token", csrf_token);
             self.http.post(LOGIN_URL).form(&params).send().await?
         };
-        let redirected_url = {
-            let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-            util::complete_url(&location, DOMAIN)
-        };
-        match redirected_url.as_str() {
-            HOME_URL => (),
-            LOGIN_URL => bail!(ClientError::WrongCredential {
-                fields: "username or password"
+        let location = util::extract_302_location_header(&resp, LOGIN_URL)?;
+        match location.as_str() {
+            "/home" => (),
+            path if path.starts_with("/login") => bail!(Error::WrongCredential {
+                fields: "username or password",
             }),
-            _ => bail!("Unexpected redirect url: {}", redirected_url),
+            _ => bail!(Error::UnexpectedRedirectPath {
+                got: location,
+                expected: "/home".to_owned(),
+                requested_url: LOGIN_URL.to_owned(),
+            }),
         };
         Ok(())
-    }
-
-    fn auth_data(&self) -> Box<dyn JsonableAuth> {
-        Box::new(self.get_auth())
     }
 
     fn is_logged_in(&self) -> bool {
         self.get_auth().session_id.is_some()
     }
 
-    fn set_auth_data_from_json(&mut self, json: &str) -> Result<()> {
-        AuthCookie::from_json(json)
-            .map_err(|e| anyhow!(e))?
+    fn export_authtoken_as_json(&self) -> String {
+        self.get_auth().to_json()
+    }
+
+    fn load_authtoken_json(&mut self, serialized_auth: &str) -> Result<()> {
+        AuthCookie::from_json(serialized_auth)?
             .session_id
             .map(|sid| self.set_auth(&sid));
         Ok(())
-    }
-
-    fn ask_credential(&self) -> Result<Box<dyn IntoCredMap>> {
-        let username = ui::ask_text("enter username").map_err(|e| anyhow!(e))?;
-        let password = ui::ask_password("enter password").map_err(|e| anyhow!(e))?;
-        Ok(Box::new(Cred { username, password }))
     }
 
     async fn logout(&mut self) -> Result<()> {
@@ -318,18 +330,24 @@ impl Client for AtCoderClient {
             self.http.post(LOGOUT_URL).form(&params).send().await?
         };
         self.revoke_auth();
-        let redirected_url = {
-            let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
-            util::complete_url(&location, DOMAIN)
-        };
-        match redirected_url.as_str() {
-            HOME_URL => Ok(()),
-            _ => Err(anyhow!("Unexpected redirect url: {}", redirected_url)),
+        let location = util::extract_302_location_header(&resp, LOGOUT_URL)?;
+        match location.as_str() {
+            "/home" => Ok(()),
+            _ => Err(Error::UnexpectedRedirectPath {
+                got: location,
+                expected: "/home".to_owned(),
+                requested_url: LOGOUT_URL.to_owned(),
+            }),
         }
     }
 
     async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
-        ensure!(self.get_auth().session_id.is_some(), ClientError::NeedLogin);
+        ensure!(
+            self.get_auth().session_id.is_some(),
+            Error::NeedLogin {
+                requested_url: problem_url.to_string(),
+            }
+        );
         let csrf_token = {
             let url = problem_url.clone();
             let html = self.http.get(url).send().await?.text().await?;
@@ -353,18 +371,24 @@ impl Client for AtCoderClient {
             params.insert("data.LanguageId", &lang.id);
             params.insert("data.TaskScreenName", &task_name);
             params.insert("csrf_token", &csrf_token);
-            self.http.post(submit_url).form(&params).send().await?
+            self.http
+                .post(submit_url.clone())
+                .form(&params)
+                .send()
+                .await?
         };
-        let location = util::extract_location_header(&resp, StatusCode::FOUND)?;
+        let location = util::extract_302_location_header(&resp, submit_url)?;
         let submissions_path = format!("/contests/{}/submissions/me", contest_name);
         match location.as_str() {
             path if path == submissions_path => Ok(()),
-            path if path.starts_with("/login") => Err(anyhow!(ClientError::NeedLogin)),
-            _ => Err(anyhow!(
-                "Unexpected redirect path: {} (expected {})",
-                location,
-                submissions_path
-            )),
+            path if path.starts_with("/login") => Err(Error::NeedLogin {
+                requested_url: problem_url.to_string(),
+            }),
+            _ => Err(Error::UnexpectedRedirectPath {
+                got: location,
+                expected: submissions_path,
+                requested_url: problem_url.to_string(),
+            }),
         }
     }
 }

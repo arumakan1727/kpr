@@ -1,10 +1,11 @@
+use anyhow::Context as _;
+use serde::{Deserialize, Serialize};
 use std::{fs::File, io, path::PathBuf, process};
 
-use crate::{cmd::GlobalArgs, errors::*};
-use serde::{Deserialize, Serialize};
+use crate::cmd::GlobalArgs;
 
-pub const APP_NAME: &'static str = "kyopro-cli";
-pub const CONFIG_FILE_NAME: &'static str = "kyopro-cli.toml";
+pub const APP_NAME: &'static str = "kpr-cli";
+pub const CONFIG_FILE_NAME: &'static str = "kpr-cli.toml";
 
 pub fn config_file_path() -> PathBuf {
     let dir = dirs::config_dir().expect("Failed to get user's config dir path");
@@ -31,7 +32,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn from_file() -> Result<Self> {
+    pub fn from_file() -> anyhow::Result<Self> {
         let path = config_file_path();
         let toml_str = match File::open(&path).map(io::read_to_string) {
             Ok(Ok(toml)) => toml,
@@ -41,7 +42,6 @@ impl Config {
             .with_context(|| format!("Invalid toml content: {}", path.to_string_lossy()))
     }
 
-    #[must_use]
     pub fn with_args(mut self, args: &GlobalArgs) -> Self {
         let GlobalArgs {
             subcmd: _,
@@ -60,10 +60,5 @@ impl Config {
                 process::exit(1);
             }
         }
-    }
-
-    pub fn session_json_path(&self, platform_name: &str) -> PathBuf {
-        self.cache_dir
-            .join(format!("session-{}.json", platform_name))
     }
 }
