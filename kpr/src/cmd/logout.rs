@@ -21,18 +21,15 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
         exit(1);
     }
 
-    let platforms: Vec<Platform> = if args.all {
+    let platforms: Vec<ArgPlatform> = if args.all {
         ArgPlatform::value_variants().to_vec()
     } else {
         util::dedup(args.platforms.clone())
-    }
-    .iter()
-    .map(Into::into)
-    .collect();
+    };
 
     let cfg = Config::from_file_and_args_or_die(global_args);
 
-    for &platform in &platforms {
+    for platform in platforms.into_iter().map(Into::<Platform>::into) {
         let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
         action::logout(&mut cli).await.unwrap_or_else(|e| {
             eprintln!("{}", e);
