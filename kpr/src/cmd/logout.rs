@@ -27,7 +27,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
         util::dedup(args.platforms.clone())
     };
 
-    let cfg = Config::from_file_and_args_or_die(global_args);
+    let cfg = Config::from_file_and_args(global_args);
 
     for platform in platforms.into_iter().map(Into::<Platform>::into) {
         let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);

@@ -52,7 +52,7 @@ impl Config {
         self
     }
 
-    pub fn from_file_and_args_or_die(args: &GlobalArgs) -> Self {
+    pub fn from_file_and_args(args: &GlobalArgs) -> Self {
         match Self::from_file() {
             Ok(cfg) => cfg.with_args(args),
             Err(e) => {
