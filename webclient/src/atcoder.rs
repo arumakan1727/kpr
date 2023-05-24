@@ -149,6 +149,13 @@ impl Client for AtCoderClient {
             && RE_PROBLEM_URL_PATH.is_match(url.path())
     }
 
+    fn get_problem_id(&self, url_path: &str) -> Option<String> {
+        RE_PROBLEM_URL_PATH
+            .captures(url_path)
+            .map(|caps| caps.get(2).map(|x| x.as_str().to_owned()))
+            .flatten()
+    }
+
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
         let tasks_en_url = {
             let mut url = contest_url.clone();
@@ -186,19 +193,19 @@ impl Client for AtCoderClient {
         };
         let problems: Vec<ProblemInfo> = {
             let sel_tr = Selector::parse("#main-container table > tbody > tr").unwrap();
-            let sel_short_title = Selector::parse("td:first-child > a").unwrap();
-            let sel_long_title = Selector::parse("td:nth-child(2) > a").unwrap();
+            let sel_title = Selector::parse("td:nth-child(2) > a").unwrap();
             doc.select(&sel_tr)
                 .enumerate()
                 .map(|(i, node)| {
-                    let el1 = node.select(&sel_short_title).next().unwrap();
-                    let el2 = node.select(&sel_long_title).next().unwrap();
-                    let url = util::complete_url(el1.value().attr("href").unwrap(), DOMAIN);
+                    let title_el = node.select(&sel_title).next().unwrap();
+                    let url_path = title_el.value().attr("href").unwrap();
+                    let url = util::complete_url(url_path, DOMAIN);
+                    let id = self.get_problem_id(&url_path).unwrap();
                     ProblemInfo {
                         url,
+                        id,
                         ord: (i + 1) as u32,
-                        short_title: el1.text().next().unwrap().trim().to_owned(),
-                        long_title: el2.text().next().unwrap().trim().to_owned(),
+                        title: title_el.text().next().unwrap().trim().to_owned(),
                     }
                 })
                 .collect()

@@ -34,8 +34,8 @@ pub struct ContestInfo {
 pub struct ProblemInfo {
     pub url: String,
     pub ord: u32,
-    pub short_title: String,
-    pub long_title: String,
+    pub id: String,
+    pub title: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -89,6 +89,8 @@ pub trait Client {
     fn is_contest_url(&self, url: &Url) -> bool;
 
     fn is_problem_url(&self, url: &Url) -> bool;
+
+    fn get_problem_id(&self, url_path: &str) -> Option<String>;
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
 

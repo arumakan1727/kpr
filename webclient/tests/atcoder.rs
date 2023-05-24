@@ -60,6 +60,23 @@ fn should_not_be_contest_url() {
 }
 
 #[test]
+fn get_problem_id() {
+    let cli = AtCoderClient::new();
+
+    assert_eq!(
+        cli.get_problem_id("/contests/abc001/tasks/abc001_1")
+            .unwrap(),
+        "abc001_1"
+    );
+    assert_eq!(
+        cli.get_problem_id("/contests/abc334/tasks/abc334_f")
+            .unwrap(),
+        "abc334_f"
+    );
+    assert_eq!(cli.get_problem_id("/contests/abc334"), None);
+}
+
+#[test]
 fn should_be_problem_url() {
     let cli = AtCoderClient::new();
     let is_problem_url = move |url: &str| cli.is_problem_url(&Url::parse(url).unwrap());
@@ -159,26 +176,26 @@ async fn fetch_abc001_info() {
             ProblemInfo {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_1".to_owned(),
                 ord: 1,
-                short_title: "A".to_owned(),
-                long_title: "積雪深差".to_owned(),
+                id: "abc001_1".to_owned(),
+                title: "積雪深差".to_owned(),
             },
             ProblemInfo {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_2".to_owned(),
                 ord: 2,
-                short_title: "B".to_owned(),
-                long_title: "視程の通報".to_owned(),
+                id: "abc001_2".to_owned(),
+                title: "視程の通報".to_owned(),
             },
             ProblemInfo {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_3".to_owned(),
                 ord: 3,
-                short_title: "C".to_owned(),
-                long_title: "風力観測".to_owned(),
+                id: "abc001_3".to_owned(),
+                title: "風力観測".to_owned(),
             },
             ProblemInfo {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_4".to_owned(),
                 ord: 4,
-                short_title: "D".to_owned(),
-                long_title: "感雨時刻の整理".to_owned(),
+                id: "abc001_4".to_owned(),
+                title: "感雨時刻の整理".to_owned(),
             },
         ]
     )
