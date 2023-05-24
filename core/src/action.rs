@@ -1,21 +1,14 @@
-use std::path::Path;
-
 pub mod error {
     #[allow(unused_imports)]
     pub(crate) use anyhow::{anyhow, bail, ensure, Context as _};
     pub use anyhow::{Error, Result};
 }
-
-use crate::{interactive::ask_credential, storage};
 use error::*;
-use kpr_webclient::Client;
 
-type DynClient = Box<dyn Client>;
+use crate::client::SessionPersistentClient as Client;
+use crate::interactive::ask_credential;
 
-pub async fn login<P>(cli: &mut DynClient, authtoken_dir: P) -> Result<()>
-where
-    P: AsRef<Path>,
-{
+pub async fn login(cli: &mut Client) -> Result<()> {
     ensure!(
         !cli.is_logged_in(),
         anyhow!("Already logged in to {}", cli.platform())
@@ -27,19 +20,16 @@ where
         .await
         .with_context(|| format!("Failed to login to {}", cli.platform()))?;
 
-    storage::save_authtoken(&cli, authtoken_dir).context("Failed to save login authtoken")
+    cli.save_authtoken_to_storage()
 }
 
-pub async fn logout<P>(cli: &mut DynClient, authtoken_dir: P) -> Result<()>
-where
-    P: AsRef<Path>,
-{
+pub async fn logout(cli: &mut Client) -> Result<()> {
     ensure!(
         cli.is_logged_in(),
         anyhow!("Already logged out from {}", cli.platform())
     );
 
-    let _ = storage::erase_authtoken(cli.platform(), authtoken_dir);
+    let _ = cli.remove_authtoken_from_storagr();
 
     cli.logout()
         .await

@@ -1,10 +1,10 @@
 use clap::ValueEnum as _;
-use kpr_core::action;
+use kpr_core::{action, client::SessionPersistentClient};
 use kpr_webclient::Platform;
 use std::process::exit;
 
 use super::{ArgPlatform, GlobalArgs};
-use crate::{client::new_client_with_authtoken_autoload, config::Config, util};
+use crate::{config::Config, util};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -33,13 +33,11 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
     let cfg = Config::from_file_and_args_or_die(global_args);
 
     for &platform in &platforms {
-        let mut cli = new_client_with_authtoken_autoload(platform, &cfg);
-        action::logout(&mut cli, &cfg.cache_dir)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("{}", e);
-                exit(1);
-            });
+        let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
+        action::logout(&mut cli).await.unwrap_or_else(|e| {
+            eprintln!("{}", e);
+            exit(1);
+        });
         eprintln!("Successfully logged out from {}", platform);
     }
     exit(0)
