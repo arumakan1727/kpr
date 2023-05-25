@@ -9,8 +9,9 @@ use error::*;
 use kpr_webclient::Url;
 
 use crate::client::SessionPersistentClient;
+use crate::config::KprRepository;
 use crate::interactive::ask_credential;
-use crate::storage;
+use crate::{config, storage};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -40,6 +41,27 @@ pub async fn logout(cli: &mut SessionPersistentClient) -> Result<()> {
     cli.logout()
         .await
         .with_context(|| format!("Failed to logout from {}", cli.platform()))
+}
+
+pub fn init_kpr_repository(dir: impl AsRef<Path>) -> Result<()> {
+    let dir = dir.as_ref();
+
+    let config_path = dir.join(config::REPOSITORY_CONFIG_FILENAME);
+    let toml = KprRepository::example_toml();
+    storage::util::write_with_mkdir(config_path, &toml)?;
+
+    let r = KprRepository::from_toml(&toml).unwrap();
+
+    let example_template_filepath = dir.join(&r.solvespace_template).join("main.cpp");
+    let template_code =  r#"#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    cout << "Hello world" << endl;
+}
+"#;
+    storage::util::write_with_mkdir(example_template_filepath, template_code)?;
+    Ok(())
 }
 
 pub async fn save_problem_data(

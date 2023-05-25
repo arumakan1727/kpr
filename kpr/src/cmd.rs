@@ -1,3 +1,4 @@
+pub mod init;
 pub mod login;
 pub mod logout;
 
@@ -17,6 +18,7 @@ pub struct GlobalArgs {
 pub enum Subcommand {
     Login(login::Args),
     Logout(logout::Args),
+    Init(init::Args),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
@@ -31,6 +33,7 @@ impl GlobalArgs {
         match &self.subcmd {
             Login(args) => login::exec(args, self).await,
             Logout(args) => logout::exec(args, self).await,
+            Init(args) => init::exec(args, self),
         }
     }
 }
