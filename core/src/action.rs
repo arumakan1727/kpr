@@ -3,13 +3,13 @@ pub mod error {
     pub(crate) use anyhow::{anyhow, bail, ensure, Context as _};
     pub use anyhow::{Error, Result};
 }
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use error::*;
-use kpr_webclient::Url;
+use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
-use crate::config::KprRepository;
+use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
 use crate::{config, storage};
 
@@ -47,13 +47,13 @@ pub fn init_kpr_repository(dir: impl AsRef<Path>) -> Result<()> {
     let dir = dir.as_ref();
 
     let config_path = dir.join(config::REPOSITORY_CONFIG_FILENAME);
-    let toml = KprRepository::example_toml();
+    let toml = RepoConfig::example_toml();
     storage::util::write_with_mkdir(config_path, &toml)?;
 
-    let r = KprRepository::from_toml(&toml).unwrap();
+    let r = RepoConfig::from_toml(&toml).unwrap();
 
     let example_template_filepath = dir.join(&r.solvespace_template).join("main.cpp");
-    let template_code =  r#"#include <bits/stdc++.h>
+    let template_code = r#"#include <bits/stdc++.h>
 using namespace std;
 
 int main() {
@@ -67,25 +67,27 @@ int main() {
 pub async fn save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
-    dir: impl AsRef<Path>,
-    testcase_dir_name: &str,
-) -> Result<()> {
+    repo: &QualifiedRepoConfig,
+) -> Result<(PathBuf, ProblemMeta, Vec<Testcase>)> {
     ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
 
-    let problem_dir = dir
-        .as_ref()
-        .join(cli.platform().lowercase())
-        .join(cli.get_problem_id(url.path()).unwrap());
-
-    let testcase_dir = problem_dir.join(testcase_dir_name);
-
-    let testcases = cli
-        .fetch_testcases(url)
+    let (problem_meta, testcases) = cli
+        .fetch_problem_detail(url)
         .await
         .context("Failed to fetch testcase")?;
 
-    storage::save_testcases(testcases.iter(), &testcase_dir).context("Failed to save testcase")?;
-    storage::save_problem_url(url, &problem_dir).context("Failed to save problem url")?;
+    let problem_dir = config::problem_dir(
+        &repo.vault_home,
+        cli.platform(),
+        cli.get_problem_unique_name(url.path()).unwrap(),
+    );
 
-    Ok(())
+    storage::save_problem_metadata(&problem_meta, &problem_dir)
+        .context("Failed to save problem metadata")?;
+
+    let testcase_dir = problem_dir.join(config::VAULT_TESTCASE_DIR_NAME);
+
+    storage::save_testcases(&testcases, &testcase_dir).context("Failed to save testcase")?;
+
+    Ok((problem_dir, problem_meta, testcases))
 }

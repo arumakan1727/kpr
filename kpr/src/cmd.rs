@@ -1,3 +1,4 @@
+pub mod fetch;
 pub mod init;
 pub mod login;
 pub mod logout;
@@ -19,6 +20,7 @@ pub enum Subcommand {
     Login(login::Args),
     Logout(logout::Args),
     Init(init::Args),
+    Fetch(fetch::Args),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
@@ -34,6 +36,7 @@ impl GlobalArgs {
             Login(args) => login::exec(args, self).await,
             Logout(args) => logout::exec(args, self).await,
             Init(args) => init::exec(args, self),
+            Fetch(args) => fetch::exec(args, self).await,
         }
     }
 }

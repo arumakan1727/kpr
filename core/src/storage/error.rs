@@ -1,4 +1,4 @@
-use std::{fmt, io, path::PathBuf};
+use std::{fmt, path::PathBuf};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub struct Error {
     pub action: ActionKind,
     pub path: PathBuf,
-    pub source: io::Error,
+    pub source: Box<dyn std::error::Error + Send + Sync>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,6 +15,8 @@ pub enum ActionKind {
     ReadFile,
     WriteFile,
     RemoveFile,
+    SerializeToJson,
+    DeserializeFromJson,
 }
 
 impl fmt::Display for ActionKind {
@@ -25,6 +27,8 @@ impl fmt::Display for ActionKind {
             ReadFile => "read file",
             WriteFile => "write file",
             RemoveFile => "remove file",
+            SerializeToJson => "serialize to json",
+            DeserializeFromJson => "deserialize from json",
         };
         write!(f, "{}", a)
     }
@@ -44,6 +48,6 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.source as &dyn std::error::Error)
+        Some(&*self.source)
     }
 }

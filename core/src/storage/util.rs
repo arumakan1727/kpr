@@ -1,7 +1,10 @@
 use std::{
-    fs,
+    fs::{self, File},
+    io::BufReader,
     path::{Path, PathBuf},
 };
+
+use serde::{de::DeserializeOwned, Serialize};
 
 use super::error::*;
 
@@ -17,13 +20,13 @@ where
         fs::create_dir_all(dir).map_err(|e| Error {
             action: ActionKind::CreateDir,
             path: dir.to_owned(),
-            source: e,
+            source: Box::from(e),
         })?
     }
     fs::write(filepath, contents).map_err(|e| Error {
         action: ActionKind::WriteFile,
         path: filepath.to_owned(),
-        source: e,
+        source: Box::from(e),
     })
 }
 
@@ -32,7 +35,7 @@ pub fn read_to_string(filepath: impl AsRef<Path>) -> Result<String> {
     fs::read_to_string(&filepath).map_err(|e| Error {
         action: ActionKind::ReadFile,
         path: filepath.as_ref().to_owned(),
-        source: e,
+        source: Box::from(e),
     })
 }
 
@@ -41,7 +44,41 @@ pub fn remove_file(filepath: impl AsRef<Path>) -> Result<()> {
     fs::remove_file(&filepath).map_err(|e| Error {
         action: ActionKind::RemoveFile,
         path: filepath.as_ref().to_owned(),
-        source: e,
+        source: Box::from(e),
+    })
+}
+
+#[must_use]
+pub fn write_json_with_mkdir<P, T>(filepath: P, data: &T) -> Result<()>
+where
+    P: AsRef<Path>,
+    T: Serialize,
+{
+    let s = serde_json::to_string(data).map_err(|e| Error {
+        action: ActionKind::SerializeToJson,
+        path: filepath.as_ref().to_owned(),
+        source: Box::from(e),
+    })?;
+
+    write_with_mkdir(filepath, &s)
+}
+
+#[must_use]
+pub fn read_json_with_deserialize<P, T>(filepath: P) -> Result<T>
+where
+    P: AsRef<Path>,
+    T: DeserializeOwned,
+{
+    let f = File::open(&filepath).map_err(|e| Error {
+        action: ActionKind::ReadFile,
+        path: filepath.as_ref().to_owned(),
+        source: Box::from(e),
+    })?;
+    let r = BufReader::new(f);
+    serde_json::from_reader(r).map_err(|e| Error {
+        action: ActionKind::DeserializeFromJson,
+        path: filepath.as_ref().to_owned(),
+        source: Box::from(e),
     })
 }
 
