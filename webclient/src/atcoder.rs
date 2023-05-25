@@ -5,7 +5,7 @@ use lazy_regex::{lazy_regex, Lazy, Regex};
 use reqwest::cookie::{CookieStore as _, Jar};
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use crate::{error::*, model::*, util};
 
@@ -80,6 +80,42 @@ fn extract_testcase(pre: ElementRef) -> String {
     node.as_text().unwrap().trim().to_owned()
 }
 
+fn scrape_testcases(doc: &Html) -> Result<Vec<Testcase>> {
+    let sel_parts_modern_ver = Selector::parse("#task-statement .lang-en > .part").unwrap();
+    let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
+    let sel_h3 = Selector::parse("h3").unwrap();
+    let sel_pre = Selector::parse("pre").unwrap();
+
+    let mut in_cases = Vec::with_capacity(5);
+    let mut out_cases = Vec::with_capacity(5);
+
+    for node in doc
+        .select(&sel_parts_modern_ver)
+        .chain(doc.select(&sel_parts_old_ver))
+    {
+        let h3 = node.select(&sel_h3).next().unwrap();
+        let title = h3.text().next().unwrap().trim().to_lowercase();
+        if title.starts_with("入力例") || title.starts_with("sample input") {
+            let pre = node.select(&sel_pre).next().unwrap();
+            in_cases.push(extract_testcase(pre));
+        } else if title.starts_with("出力例") || title.starts_with("sample output") {
+            let pre = node.select(&sel_pre).next().unwrap();
+            out_cases.push(extract_testcase(pre));
+        }
+    }
+    let cases: Vec<_> = in_cases
+        .into_iter()
+        .zip(out_cases)
+        .enumerate()
+        .map(|(i, (input, expected))| Testcase {
+            ord: (i + 1) as u32,
+            input,
+            expected,
+        })
+        .collect();
+    Ok(cases)
+}
+
 impl AtCoderClient {
     pub fn new() -> Self {
         let jar = Arc::new(Jar::default());
@@ -149,7 +185,7 @@ impl Client for AtCoderClient {
             && RE_PROBLEM_URL_PATH.is_match(url.path())
     }
 
-    fn get_problem_id(&self, url_path: &str) -> Option<String> {
+    fn get_problem_unique_name(&self, url_path: &str) -> Option<String> {
         RE_PROBLEM_URL_PATH
             .captures(url_path)
             .map(|caps| caps.get(2).map(|x| x.as_str().to_owned()))
@@ -191,7 +227,7 @@ impl Client for AtCoderClient {
             let t2 = DateTime::parse_from_str(s2.trim(), FMT).unwrap();
             (t1.with_timezone(&Local), t2.with_timezone(&Local))
         };
-        let problems: Vec<ProblemInfo> = {
+        let problems: Vec<ContestProblemOutline> = {
             let sel_tr = Selector::parse("#main-container table > tbody > tr").unwrap();
             let sel_title = Selector::parse("td:nth-child(2) > a").unwrap();
             doc.select(&sel_tr)
@@ -200,10 +236,8 @@ impl Client for AtCoderClient {
                     let title_el = node.select(&sel_title).next().unwrap();
                     let url_path = title_el.value().attr("href").unwrap();
                     let url = util::complete_url(url_path, DOMAIN);
-                    let id = self.get_problem_id(&url_path).unwrap();
-                    ProblemInfo {
+                    ContestProblemOutline {
                         url,
-                        id,
                         ord: (i + 1) as u32,
                         title: title_el.text().next().unwrap().trim().to_owned(),
                     }
@@ -221,7 +255,10 @@ impl Client for AtCoderClient {
         })
     }
 
-    async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>> {
+    async fn fetch_problem_detail(
+        &self,
+        problem_url: &Url,
+    ) -> Result<(ProblemMeta, Vec<Testcase>)> {
         let html = self
             .http
             .get(problem_url.clone())
@@ -230,40 +267,46 @@ impl Client for AtCoderClient {
             .text()
             .await?;
         let doc = Html::parse_document(&html);
+        let title = {
+            let sel = Selector::parse("#main-container > div .h2").unwrap();
+            let node = doc.select(&sel).next().unwrap();
+            let s = node.text().next().unwrap().trim().to_owned();
+            let (_, title) = s.split_once("-").unwrap();
+            title.trim().to_owned()
+        };
+        let (execution_time_limit, memory_limit_kb) = {
+            let sel = Selector::parse("#main-container > div > div:nth-child(2) > p").unwrap();
+            let node = doc.select(&sel).next().unwrap();
+            let text = node.text().next().unwrap();
+            let xs: Vec<_> = text.split("/").map(str::trim).collect();
 
-        let sel_parts_current_ver = Selector::parse("#task-statement .lang-en > .part").unwrap();
-        let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
-        let sel_h3 = Selector::parse("h3").unwrap();
-        let sel_pre = Selector::parse("pre").unwrap();
-
-        let mut in_cases = Vec::with_capacity(5);
-        let mut out_cases = Vec::with_capacity(5);
-
-        for node in doc
-            .select(&sel_parts_current_ver)
-            .chain(doc.select(&sel_parts_old_ver))
-        {
-            let h3 = node.select(&sel_h3).next().unwrap();
-            let title = h3.text().next().unwrap().trim().to_lowercase();
-            if title.starts_with("入力例") || title.starts_with("sample input") {
-                let pre = node.select(&sel_pre).next().unwrap();
-                in_cases.push(extract_testcase(pre));
-            } else if title.starts_with("出力例") || title.starts_with("sample output") {
-                let pre = node.select(&sel_pre).next().unwrap();
-                out_cases.push(extract_testcase(pre));
-            }
-        }
-        let cases: Vec<_> = in_cases
-            .into_iter()
-            .zip(out_cases)
-            .enumerate()
-            .map(|(i, (input, expected))| Testcase {
-                ord: (i + 1) as u32,
-                input,
-                expected,
-            })
-            .collect();
-        Ok(cases)
+            let (time_limit, memory_limit) = if xs[0].starts_with("Time") {
+                (
+                    xs[0].strip_prefix("Time Limit:").unwrap().trim(),
+                    xs[1].strip_prefix("Memory Limit:").unwrap().trim(),
+                )
+            } else {
+                (
+                    xs[0].strip_prefix("実行時間制限:").unwrap().trim(),
+                    xs[1].strip_prefix("メモリ制限:").unwrap().trim(),
+                )
+            };
+            (
+                parse_duration_str(time_limit),
+                parse_memory_str_as_kb(memory_limit),
+            )
+        };
+        let unique_name = self.get_problem_unique_name(problem_url.path()).unwrap();
+        let testcases = scrape_testcases(&doc)?;
+        let meta = ProblemMeta {
+            platform: self.platform(),
+            url: problem_url.to_string(),
+            unique_name,
+            title,
+            execution_time_limit,
+            memory_limit_kb,
+        };
+        Ok((meta, testcases))
     }
 
     fn credential_fields(&self) -> &'static [CredField] {
@@ -397,5 +440,65 @@ impl Client for AtCoderClient {
                 requested_url: problem_url.to_string(),
             }),
         }
+    }
+}
+
+fn parse_duration_str(s: &str) -> Duration {
+    let s = s.trim();
+
+    if s.ends_with("sec") {
+        let n = s.strip_suffix("sec").unwrap().trim().parse().unwrap();
+        Duration::from_secs(n)
+    } else if s.ends_with("secs") {
+        let n = s.strip_suffix("secs").unwrap().trim().parse().unwrap();
+        Duration::from_secs(n)
+    } else if s.ends_with("ms") {
+        let n = s.strip_suffix("ms").unwrap().trim().parse().unwrap();
+        Duration::from_millis(n)
+    } else if s.ends_with("s") {
+        let n = s.strip_suffix("s").unwrap().trim().parse().unwrap();
+        Duration::from_secs(n)
+    } else {
+        panic!("Cannot parse as duration: {}", s);
+    }
+}
+
+fn parse_memory_str_as_kb(s: &str) -> u32 {
+    let s = s.trim().to_lowercase();
+
+    if s.ends_with("gb") {
+        let n: u32 = s.strip_suffix("gb").unwrap().trim().parse().unwrap();
+        n * 1024 * 1024
+    } else if s.ends_with("mb") {
+        let n: u32 = s.strip_suffix("mb").unwrap().trim().parse().unwrap();
+        n * 1024
+    } else if s.ends_with("kb") {
+        let n: u32 = s.strip_suffix("kb").unwrap().trim().parse().unwrap();
+        n
+    } else {
+        panic!("Cannot parse as memory units: {}", s);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_duration_str_ok() {
+        assert_eq!(parse_duration_str("3 sec"), Duration::from_secs(3));
+        assert_eq!(parse_duration_str("3 secs"), Duration::from_secs(3));
+        assert_eq!(parse_duration_str("3 s"), Duration::from_secs(3));
+        assert_eq!(parse_duration_str("3sec"), Duration::from_secs(3));
+        assert_eq!(parse_duration_str("100ms"), Duration::from_millis(100));
+    }
+
+    #[test]
+    fn parse_memory_str_as_kb_ok() {
+        assert_eq!(parse_memory_str_as_kb("1 GB"), 1024 * 1024);
+        assert_eq!(parse_memory_str_as_kb("5 MB"), 5 * 1024);
+        assert_eq!(parse_memory_str_as_kb("512 KB"), 512);
+        assert_eq!(parse_memory_str_as_kb("3 kb"), 3);
+        assert_eq!(parse_memory_str_as_kb("1GB"), 1024 * 1024);
     }
 }

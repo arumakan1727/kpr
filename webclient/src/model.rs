@@ -1,12 +1,15 @@
 use crate::error::*;
 use async_trait::async_trait;
-use std::{collections::HashMap, fmt::Debug};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fmt::Debug, time::Duration};
 
 pub use reqwest::Url;
 
 pub type LocalDateTime = chrono::DateTime<chrono::Local>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::EnumIter)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::EnumIter, Serialize, Deserialize,
+)]
 pub enum Platform {
     AtCoder,
 }
@@ -25,20 +28,29 @@ pub struct ContestInfo {
     pub url: String,
     pub short_title: String,
     pub long_title: String,
-    pub problems: Vec<ProblemInfo>,
+    pub problems: Vec<ContestProblemOutline>,
     pub start_at: LocalDateTime,
     pub end_at: LocalDateTime,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ProblemInfo {
+pub struct ContestProblemOutline {
     pub url: String,
     pub ord: u32,
-    pub id: String,
     pub title: String,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct ProblemMeta {
+    pub platform: Platform,
+    pub url: String,
+    pub unique_name: String,
+    pub title: String,
+    pub execution_time_limit: Duration,
+    pub memory_limit_kb: u32,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Testcase {
     pub ord: u32,
     pub input: String,
@@ -90,11 +102,12 @@ pub trait Client {
 
     fn is_problem_url(&self, url: &Url) -> bool;
 
-    fn get_problem_id(&self, url_path: &str) -> Option<String>;
+    fn get_problem_unique_name(&self, url_path: &str) -> Option<String>;
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
 
-    async fn fetch_testcases(&self, problem_url: &Url) -> Result<Vec<Testcase>>;
+    async fn fetch_problem_detail(&self, problem_url: &Url)
+        -> Result<(ProblemMeta, Vec<Testcase>)>;
 
     fn credential_fields(&self) -> &'static [CredField];
 

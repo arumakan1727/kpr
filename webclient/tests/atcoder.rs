@@ -64,16 +64,16 @@ fn get_problem_id() {
     let cli = AtCoderClient::new();
 
     assert_eq!(
-        cli.get_problem_id("/contests/abc001/tasks/abc001_1")
+        cli.get_problem_unique_name("/contests/abc001/tasks/abc001_1")
             .unwrap(),
         "abc001_1"
     );
     assert_eq!(
-        cli.get_problem_id("/contests/abc334/tasks/abc334_f")
+        cli.get_problem_unique_name("/contests/abc334/tasks/abc334_f")
             .unwrap(),
         "abc334_f"
     );
-    assert_eq!(cli.get_problem_id("/contests/abc334"), None);
+    assert_eq!(cli.get_problem_unique_name("/contests/abc334"), None);
 }
 
 #[test]
@@ -173,28 +173,24 @@ async fn fetch_abc001_info() {
     assert_eq!(
         info.problems,
         vec![
-            ProblemInfo {
+            ContestProblemOutline {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_1".to_owned(),
                 ord: 1,
-                id: "abc001_1".to_owned(),
                 title: "積雪深差".to_owned(),
             },
-            ProblemInfo {
+            ContestProblemOutline {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_2".to_owned(),
                 ord: 2,
-                id: "abc001_2".to_owned(),
                 title: "視程の通報".to_owned(),
             },
-            ProblemInfo {
+            ContestProblemOutline {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_3".to_owned(),
                 ord: 3,
-                id: "abc001_3".to_owned(),
                 title: "風力観測".to_owned(),
             },
-            ProblemInfo {
+            ContestProblemOutline {
                 url: "https://atcoder.jp/contests/abc001/tasks/abc001_4".to_owned(),
                 ord: 4,
-                id: "abc001_4".to_owned(),
                 title: "感雨時刻の整理".to_owned(),
             },
         ]
@@ -202,16 +198,28 @@ async fn fetch_abc001_info() {
 }
 
 #[tokio::test]
-async fn fetch_abc003_4_testcases() {
+async fn fetch_abc003_4_detail() {
     // Avoid DDos attack
     sleep_random_ms();
 
     let url = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
     let cli = AtCoderClient::new();
-    let testcases = cli
-        .fetch_testcases(&Url::parse(&url).unwrap())
+    let (problem_meta, testcases) = cli
+        .fetch_problem_detail(&Url::parse(&url).unwrap())
         .await
         .unwrap();
+
+    assert_eq!(
+        problem_meta,
+        ProblemMeta {
+            platform: Platform::AtCoder,
+            url: url.to_owned(),
+            unique_name: "abc003_4".to_owned(),
+            title: "AtCoder社の冬".to_owned(),
+            execution_time_limit: Duration::from_secs(2),
+            memory_limit_kb: 64 * 1024,
+        },
+    );
     assert_eq!(
         testcases,
         vec![
@@ -240,16 +248,28 @@ async fn fetch_abc003_4_testcases() {
 }
 
 #[tokio::test]
-async fn fetch_abc086_a_testcases() {
+async fn fetch_abc086_a_detail() {
     // Avoid DDos attack
     sleep_random_ms();
 
     let url = "https://atcoder.jp/contests/abs/tasks/abc086_a";
     let cli = AtCoderClient::new();
-    let testcases = cli
-        .fetch_testcases(&Url::parse(&url).unwrap())
+    let (problem_meta, testcases) = cli
+        .fetch_problem_detail(&Url::parse(&url).unwrap())
         .await
         .unwrap();
+
+    assert_eq!(
+        problem_meta,
+        ProblemMeta {
+            platform: Platform::AtCoder,
+            url: url.to_owned(),
+            unique_name: "abc086_a".to_owned(),
+            title: "Product".to_owned(),
+            execution_time_limit: Duration::from_secs(2),
+            memory_limit_kb: 256 * 1024,
+        }
+    );
     assert_eq!(
         testcases,
         vec![
@@ -264,7 +284,7 @@ async fn fetch_abc086_a_testcases() {
                 expected: "Odd".to_owned(),
             },
         ]
-    );
+    )
 }
 
 #[test]
