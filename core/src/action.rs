@@ -5,13 +5,14 @@ pub mod error {
 }
 use error::*;
 
-use crate::client::SessionPersistentClient as Client;
+use crate::client::SessionPersistentClient;
 use crate::interactive::ask_credential;
 
-pub async fn login(cli: &mut Client) -> Result<()> {
+pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
         !cli.is_logged_in(),
-        anyhow!("Already logged in to {}", cli.platform())
+        "Already logged in to {}",
+        cli.platform()
     );
 
     let cred = ask_credential(cli.credential_fields());
@@ -23,10 +24,11 @@ pub async fn login(cli: &mut Client) -> Result<()> {
     cli.save_authtoken_to_storage()
 }
 
-pub async fn logout(cli: &mut Client) -> Result<()> {
+pub async fn logout(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
         cli.is_logged_in(),
-        anyhow!("Already logged out from {}", cli.platform())
+        "Already logged out from {}",
+        cli.platform()
     );
 
     let _ = cli.remove_authtoken_from_storagr();
