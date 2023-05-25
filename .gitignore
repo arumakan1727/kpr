@@ -2,6 +2,12 @@ target/
 .envrc
 .env
 
+# `kpr` command generates
+/kpr-repository.toml
+/vault/
+/template/
+/daily/
+
 # OS generated files
 .DS_Store
 .DS_Store?
