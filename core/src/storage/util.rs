@@ -9,6 +9,16 @@ use serde::{de::DeserializeOwned, Serialize};
 use super::error::*;
 
 #[must_use]
+pub fn mkdir_all(path: impl AsRef<Path>) -> Result<()> {
+    let dir = path.as_ref();
+    fs::create_dir_all(dir).map_err(|e| Error {
+        action: ActionKind::CreateDir,
+        path: dir.to_owned(),
+        source: Box::from(e),
+    })
+}
+
+#[must_use]
 pub fn write_with_mkdir<P, C>(filepath: P, contents: C) -> Result<()>
 where
     P: AsRef<Path>,
@@ -17,11 +27,7 @@ where
     let filepath = filepath.as_ref();
 
     if let Some(dir) = filepath.parent() {
-        fs::create_dir_all(dir).map_err(|e| Error {
-            action: ActionKind::CreateDir,
-            path: dir.to_owned(),
-            source: Box::from(e),
-        })?
+        self::mkdir_all(dir)?;
     }
     fs::write(filepath, contents).map_err(|e| Error {
         action: ActionKind::WriteFile,
