@@ -1,53 +1,20 @@
-use std::{fmt, path::PathBuf};
+use std::{io, path::PathBuf};
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, self::Error>;
 
-#[derive(Debug)]
-pub struct Error {
-    pub action: ActionKind,
-    pub path: PathBuf,
-    pub source: Box<dyn std::error::Error + Send + Sync>,
-}
+type Msg = &'static str;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ActionKind {
-    CreateDir,
-    ReadFile,
-    WriteFile,
-    RemoveFile,
-    SerializeToJson,
-    DeserializeFromJson,
-}
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("{0} ({1}): {2}")]
+    SingleIO(Msg, PathBuf, #[source] io::Error),
 
-impl fmt::Display for ActionKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use ActionKind::*;
-        let a = match self {
-            CreateDir => "create dir",
-            ReadFile => "read file",
-            WriteFile => "write file",
-            RemoveFile => "remove file",
-            SerializeToJson => "serialize to json",
-            DeserializeFromJson => "deserialize from json",
-        };
-        write!(f, "{}", a)
-    }
-}
+    #[error("Cannot create symlink (orig='{0}', link={1}): {2}")]
+    Symlink(PathBuf, PathBuf, #[source] io::Error),
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Cannot {} '{}': {}",
-            self.action,
-            self.path.to_string_lossy(),
-            self.source
-        )
-    }
-}
+    #[error("Cannot serialize to JSON (dest='{0}'): {1}")]
+    SerializeToJson(PathBuf, #[source] serde_json::Error),
 
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&*self.source)
-    }
+    #[error("Cannot deserialize from JSON (src='{0}'): {1}")]
+    DeserializeFromJson(PathBuf, #[source] serde_json::Error),
 }

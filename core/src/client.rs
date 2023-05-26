@@ -1,4 +1,5 @@
 use std::{
+    io,
     ops::{Deref, DerefMut},
     path::Path,
 };
@@ -6,10 +7,7 @@ use std::{
 use anyhow::{anyhow, Context};
 use kpr_webclient::Platform;
 
-use crate::{
-    config,
-    storage::{util::SingleFileDriver, ActionKind},
-};
+use crate::{config, storage::util::SingleFileDriver};
 
 pub struct SessionPersistentClient {
     cli: Box<dyn kpr_webclient::Client>,
@@ -47,8 +45,12 @@ impl SessionPersistentClient {
     }
 
     pub fn load_authtoken_if_file_exists(&mut self) -> anyhow::Result<()> {
+        use crate::storage::Error;
+
         match self.authtoken_file.read() {
-            Err(err) if err.action == ActionKind::ReadFile => Ok(()),
+            Err(Error::SingleIO(_msg, _path, err)) if err.kind() == io::ErrorKind::NotFound => {
+                Ok(())
+            }
 
             Ok(json) => self.cli.load_authtoken_json(&json).with_context(|| {
                 format!(
