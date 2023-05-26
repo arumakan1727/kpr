@@ -1,12 +1,12 @@
-use async_trait::async_trait;
-use chrono::DateTime;
-use cookie::Cookie;
-use lazy_regex::{lazy_regex, Lazy, Regex};
-use reqwest::cookie::{CookieStore as _, Jar};
-use scraper::{ElementRef, Html, Selector};
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use ::async_trait::async_trait;
+use ::chrono::DateTime;
+use ::cookie::Cookie;
+use ::reqwest::cookie::{CookieStore as _, Jar};
+use ::scraper::{ElementRef, Html, Selector};
+use ::serde::{Deserialize, Serialize};
+use ::std::{collections::HashMap, sync::Arc, time::Duration};
 
+use super::urls::*;
 use crate::{error::*, model::*, util};
 
 macro_rules! bail {
@@ -33,10 +33,13 @@ pub struct AuthCookie {
     pub session_id: Option<String>,
 }
 
-impl AuthCookie {
-    pub fn empty() -> Self {
+impl Default for AuthCookie {
+    fn default() -> Self {
         AuthCookie { session_id: None }
     }
+}
+
+impl AuthCookie {
     pub fn from_json(s: &str) -> serde_json::Result<Self> {
         serde_json::from_str(s)
     }
@@ -63,17 +66,7 @@ impl From<AtCoderCred> for CredMap {
     }
 }
 
-static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
-static RE_PROBLEM_URL_PATH: Lazy<Regex> =
-    lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/(([[:alnum:]]+)_([[:alnum:]]+))/?$");
-
-pub const DOMAIN: &'static str = "atcoder.jp";
-pub const HOME_URL: &'static str = "https://atcoder.jp/home";
-pub const LOGIN_URL: &'static str = "https://atcoder.jp/login";
-pub const LOGOUT_URL: &'static str = "https://atcoder.jp/logout";
-pub static URL: Lazy<Url> = Lazy::new(|| Url::parse("https://atcoder.jp").unwrap());
-
-const COOKIE_KEY_SESSION_ID: &'static str = "REVEL_SESSION";
+const COOKIE_KEY_SESSION_ID: &str = "REVEL_SESSION";
 
 fn extract_testcase(pre: ElementRef) -> String {
     let node = pre.first_child().unwrap().value();
@@ -139,7 +132,7 @@ impl AtCoderClient {
     }
 
     pub fn get_auth(&self) -> AuthCookie {
-        let raw_cookies = match self.jar.cookies(&URL) {
+        let raw_cookies = match self.jar.cookies(&TOP_URL) {
             Some(s) => s,
             None => return AuthCookie { session_id: None },
         };
@@ -158,12 +151,12 @@ impl AtCoderClient {
             "{}={}; Path=/; HttpOnly; Secure; Domain={}",
             COOKIE_KEY_SESSION_ID, session_id, DOMAIN,
         );
-        self.jar.add_cookie_str(&cookie, &URL);
+        self.jar.add_cookie_str(&cookie, &TOP_URL);
     }
 
     pub fn revoke_auth(&mut self) {
         let cookie = format!("{}=", COOKIE_KEY_SESSION_ID);
-        self.jar.add_cookie_str(&cookie, &URL);
+        self.jar.add_cookie_str(&cookie, &TOP_URL);
     }
 }
 
@@ -173,23 +166,16 @@ impl Client for AtCoderClient {
         Platform::AtCoder
     }
 
-    fn is_contest_url(&self, url: &Url) -> bool {
-        url.scheme() == "https"
-            && url.host_str() == Some(DOMAIN)
-            && RE_CONTEST_URL_PATH.is_match(url.path())
+    fn is_contest_home_url(&self, url: &Url) -> bool {
+        AtCoderUrlAnalyzer::is_contest_home_url(url)
     }
 
     fn is_problem_url(&self, url: &Url) -> bool {
-        url.scheme() == "https"
-            && url.host_str() == Some(DOMAIN)
-            && RE_PROBLEM_URL_PATH.is_match(url.path())
+        AtCoderUrlAnalyzer::is_problem_url(url)
     }
 
-    fn get_problem_unique_name(&self, url_path: &str) -> Option<String> {
-        RE_PROBLEM_URL_PATH
-            .captures(url_path)
-            .map(|caps| caps.get(2).map(|x| x.as_str().to_owned()))
-            .flatten()
+    fn problem_id_name(&self, url: &Url) -> IdNameResult {
+        AtCoderUrlAnalyzer::problem_id_name(url)
     }
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
@@ -296,12 +282,12 @@ impl Client for AtCoderClient {
                 parse_memory_str_as_kb(memory_limit),
             )
         };
-        let unique_name = self.get_problem_unique_name(problem_url.path()).unwrap();
+        let id_name = unsafe { self.problem_id_name(problem_url).unwrap_unchecked() };
         let testcases = scrape_testcases(&doc)?;
         let meta = ProblemMeta {
             platform: self.platform(),
             url: problem_url.to_string(),
-            unique_name,
+            id_name,
             title,
             execution_time_limit,
             memory_limit_kb,

@@ -19,9 +19,9 @@ fn sleep_random_ms() {
 }
 
 #[test]
-fn should_be_contest_url() {
+fn should_be_contest_home_url() {
     let cli = AtCoderClient::new();
-    let is_contest_url = move |url: &str| cli.is_contest_url(&Url::parse(url).unwrap());
+    let is_contest_url = move |url: &str| cli.is_contest_home_url(&Url::parse(url).unwrap());
 
     assert!(is_contest_url("https://atcoder.jp/contests/abc001"));
     assert!(is_contest_url("https://atcoder.jp/contests/abc001/"));
@@ -39,9 +39,9 @@ fn should_be_contest_url() {
 }
 
 #[test]
-fn should_not_be_contest_url() {
+fn should_not_be_contest_home_url() {
     let cli = AtCoderClient::new();
-    let is_contest_url = move |url: &str| cli.is_contest_url(&Url::parse(url).unwrap());
+    let is_contest_url = move |url: &str| cli.is_contest_home_url(&Url::parse(url).unwrap());
 
     assert!(!is_contest_url("https://atcoder.jp/contests"));
     assert!(!is_contest_url("https://atcoder.jp/contests/"));
@@ -62,18 +62,20 @@ fn should_not_be_contest_url() {
 #[test]
 fn get_problem_id() {
     let cli = AtCoderClient::new();
+    let problem_id_name = move |url: &str| {
+        cli.problem_id_name(&Url::parse(url).unwrap())
+            .map(|id_name| id_name.to_string())
+    };
 
     assert_eq!(
-        cli.get_problem_unique_name("/contests/abc001/tasks/abc001_1")
-            .unwrap(),
+        problem_id_name("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
         "abc001_1"
     );
     assert_eq!(
-        cli.get_problem_unique_name("/contests/abc334/tasks/abc334_f")
-            .unwrap(),
+        problem_id_name("https://atcoder.jp/contests/abc334/tasks/abc334_f").unwrap(),
         "abc334_f"
     );
-    assert_eq!(cli.get_problem_unique_name("/contests/abc334"), None);
+    assert!(problem_id_name("https://atcoder.jp/contests/abc334").is_err());
 }
 
 #[test]
@@ -202,19 +204,17 @@ async fn fetch_abc003_4_detail() {
     // Avoid DDos attack
     sleep_random_ms();
 
-    let url = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
+    let url_str = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
+    let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli
-        .fetch_problem_detail(&Url::parse(&url).unwrap())
-        .await
-        .unwrap();
+    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
         problem_meta,
         ProblemMeta {
             platform: Platform::AtCoder,
-            url: url.to_owned(),
-            unique_name: "abc003_4".to_owned(),
+            url: url_str.to_owned(),
+            id_name: IdName::try_from(&url).unwrap(),
             title: "AtCoder社の冬".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 64 * 1024,
@@ -252,19 +252,17 @@ async fn fetch_abc086_a_detail() {
     // Avoid DDos attack
     sleep_random_ms();
 
-    let url = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+    let url_str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+    let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli
-        .fetch_problem_detail(&Url::parse(&url).unwrap())
-        .await
-        .unwrap();
+    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
         problem_meta,
         ProblemMeta {
             platform: Platform::AtCoder,
-            url: url.to_owned(),
-            unique_name: "abc086_a".to_owned(),
+            url: url_str.to_owned(),
+            id_name: IdName::try_from(&url).unwrap(),
             title: "Product".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 256 * 1024,

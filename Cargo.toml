@@ -33,3 +33,4 @@ strum = { version = "0.24.1", features = ["derive"] }
 thiserror = "1.0.40"
 tokio = { version = "1.28.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.7.3"
+url = "2.3.1"

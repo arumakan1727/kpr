@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::{atcoder::AtCoderUrlAnalyzer, error::*};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, time::Duration};
@@ -40,11 +40,54 @@ pub struct ContestProblemOutline {
     pub title: String,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Serialize, Deserialize)]
+pub struct IdName(pub(crate) String);
+
+pub type IdNameResult = std::result::Result<IdName, IdNameError>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum IdNameError {
+    #[error("Cannot parse as URL (given '{0}')")]
+    CannotParseAsUrl(String),
+
+    #[error("Unknown URL origin for kpr-platform: '{0}'")]
+    UnknownOrigin(Url),
+
+    #[error("Not a problem URL of {1}: '{0}'")]
+    NotProblemUrl(Url, Platform),
+}
+
+impl<'a> TryFrom<&'a Url> for IdName {
+    type Error = IdNameError;
+
+    fn try_from(url: &'a Url) -> IdNameResult {
+        let Some(platform) = crate::detect_platform_from_url(url) else {
+            return Err(IdNameError::UnknownOrigin(url.to_owned()));
+        };
+        use Platform::*;
+        match platform {
+            AtCoder => AtCoderUrlAnalyzer::problem_id_name(url),
+        }
+    }
+}
+
+impl std::fmt::Display for IdName {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for IdName {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ProblemMeta {
     pub platform: Platform,
     pub url: String,
-    pub unique_name: String,
+    pub id_name: IdName,
     pub title: String,
     pub execution_time_limit: Duration,
     pub memory_limit_kb: u32,
@@ -94,15 +137,22 @@ pub struct CredField {
 /// e.g. `[ "username" => "Bob", "password" => "***" ]`
 pub type CredMap = HashMap<CredName, String>;
 
+pub trait UrlAnalyzer {
+    fn is_supported_origin(url: &Url) -> bool;
+    fn is_contest_home_url(url: &Url) -> bool;
+    fn is_problem_url(url: &Url) -> bool;
+    fn problem_id_name(url: &Url) -> std::result::Result<IdName, IdNameError>;
+}
+
 #[async_trait]
 pub trait Client {
     fn platform(&self) -> Platform;
 
-    fn is_contest_url(&self, url: &Url) -> bool;
+    fn is_contest_home_url(&self, url: &Url) -> bool;
 
     fn is_problem_url(&self, url: &Url) -> bool;
 
-    fn get_problem_unique_name(&self, url_path: &str) -> Option<String>;
+    fn problem_id_name(&self, url: &Url) -> IdNameResult;
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
 
