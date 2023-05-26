@@ -11,7 +11,7 @@ use kpr_webclient::{ProblemMeta, Testcase, Url};
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::{config, storage};
+use crate::{config, fsutil, storage};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -48,7 +48,7 @@ pub fn init_kpr_repository(dir: impl AsRef<Path>) -> Result<()> {
 
     let config_path = dir.join(config::REPOSITORY_CONFIG_FILENAME);
     let toml = RepoConfig::example_toml();
-    storage::util::write_with_mkdir(config_path, &toml)?;
+    fsutil::write_with_mkdir(config_path, &toml)?;
 
     let r = RepoConfig::from_toml(&toml).unwrap();
 
@@ -60,10 +60,11 @@ int main() {
     cout << "Hello world" << endl;
 }
 "#;
-    storage::util::write_with_mkdir(example_template_filepath, template_code)?;
+    fsutil::write_with_mkdir(example_template_filepath, template_code)?;
     Ok(())
 }
 
+/// Returns (saved_problem_dir_path, metadata, testcases)
 pub async fn save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,

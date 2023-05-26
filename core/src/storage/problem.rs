@@ -2,15 +2,16 @@ use std::path::Path;
 
 use kpr_webclient::{ProblemMeta, Testcase};
 
-use crate::config;
-
-use super::{error::*, util};
+use crate::{
+    config,
+    fsutil::{self, error::Result},
+};
 
 pub fn save_testcase(t: &Testcase, dir: impl AsRef<Path>) -> Result<()> {
     let dir = dir.as_ref();
     let (infile, outfile) = config::testcase_filename(t.ord);
-    util::write_with_mkdir(dir.join(&infile), &t.input)?;
-    util::write_with_mkdir(dir.join(&outfile), &t.expected)?;
+    fsutil::write_with_mkdir(dir.join(&infile), &t.input)?;
+    fsutil::write_with_mkdir(dir.join(&outfile), &t.expected)?;
     Ok(())
 }
 
@@ -26,12 +27,12 @@ pub fn save_testcases<'a>(
 
 pub fn save_problem_metadata(data: &ProblemMeta, dir: impl AsRef<Path>) -> Result<()> {
     let filepath = dir.as_ref().join(config::PROBLEM_METADATA_FILENAME);
-    util::write_json_with_mkdir(filepath, data)
+    fsutil::write_json_with_mkdir(filepath, data)
 }
 
 pub fn load_problem_metadata(dir: impl AsRef<Path>) -> Result<ProblemMeta> {
     let filepath = dir.as_ref().join(config::PROBLEM_METADATA_FILENAME);
-    util::read_json_with_deserialize(filepath)
+    fsutil::read_json_with_deserialize(filepath)
 }
 
 pub fn exists_problem_data(dir: impl AsRef<Path>, testcase_dir_name: &str) -> bool {

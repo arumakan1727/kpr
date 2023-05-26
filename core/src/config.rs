@@ -7,7 +7,7 @@ use kpr_webclient::Platform;
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 
-use crate::storage;
+use crate::fsutil;
 
 pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
 pub const REPOSITORY_CONFIG_FILENAME: &str = "kpr-repository.toml";
@@ -107,7 +107,7 @@ impl QualifiedRepoConfig {
         let Some(config_path) = RepoConfig::find_filepath(current_dir) else {
             bail!("Not in a kpr-repository dir: Cannot find '{}'", REPOSITORY_CONFIG_FILENAME);
         };
-        let contents = storage::util::read_to_string(&config_path).context("Failed to read")?;
+        let contents = fsutil::read_to_string(&config_path).context("Failed to read")?;
         let cfg = RepoConfig::from_toml(&contents)
             .with_context(|| format!("Invalid TOML: {}", config_path.to_string_lossy()))?;
         Ok(cfg.with_root_dir(config_path.parent().unwrap()))
