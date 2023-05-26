@@ -11,7 +11,7 @@ use kpr_webclient::{ProblemMeta, Testcase, Url};
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::{config, fsutil, storage};
+use crate::{config, fsutil, repository};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -82,13 +82,11 @@ pub async fn save_problem_data(
         cli.platform(),
         cli.get_problem_unique_name(url.path()).unwrap(),
     );
-
-    storage::save_problem_metadata(&problem_meta, &problem_dir)
+    repository::save_problem_metadata(&problem_meta, &problem_dir)
         .context("Failed to save problem metadata")?;
 
     let testcase_dir = problem_dir.join(config::VAULT_TESTCASE_DIR_NAME);
-
-    storage::save_testcases(&testcases, &testcase_dir).context("Failed to save testcase")?;
+    repository::save_testcases(&testcases, &testcase_dir).context("Failed to save testcase")?;
 
     Ok((problem_dir, problem_meta, testcases))
 }

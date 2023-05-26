@@ -2,6 +2,6 @@ pub mod action;
 pub mod client;
 pub mod config;
 pub mod interactive;
-pub mod storage;
+pub mod repository;
 
 pub(crate) mod fsutil;

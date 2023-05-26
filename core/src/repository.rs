@@ -1,11 +1,13 @@
+pub mod error {
+    pub use crate::fsutil::error::*;
+}
+
 use std::path::Path;
 
+use error::Result;
 use kpr_webclient::{ProblemMeta, Testcase};
 
-use crate::{
-    config,
-    fsutil::{self, error::Result},
-};
+use crate::{config, fsutil};
 
 pub fn save_testcase(t: &Testcase, dir: impl AsRef<Path>) -> Result<()> {
     let dir = dir.as_ref();
