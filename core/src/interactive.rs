@@ -1,4 +1,4 @@
-use kpr_webclient::{CredFieldMeta, CredFieldKind, CredMap};
+use kpr_webclient::{CredFieldKind, CredFieldMeta, CredMap};
 
 pub mod util {
     use dialoguer::{theme::ColorfulTheme, Input, Password};

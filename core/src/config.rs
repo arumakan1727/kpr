@@ -20,8 +20,8 @@ pub fn authtoken_filename(platform: Platform) -> String {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RepoConfig {
     pub vault_home: PathBuf,
-    pub daily_home: PathBuf,
-    pub solvespace_template: PathBuf,
+    pub workspace_home: PathBuf,
+    pub workspace_template: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -70,8 +70,8 @@ impl RepoConfig {
     pub fn with_root_dir(mut self, root_dir: impl AsRef<Path>) -> QualifiedRepoConfig {
         let root_dir = root_dir.as_ref();
         self.vault_home = root_dir.join(self.vault_home);
-        self.daily_home = root_dir.join(self.daily_home);
-        self.solvespace_template = root_dir.join(self.solvespace_template);
+        self.workspace_home = root_dir.join(self.workspace_home);
+        self.workspace_template = root_dir.join(self.workspace_template);
         QualifiedRepoConfig {
             repo_root: root_dir.to_owned(),
             inner: self,
@@ -102,7 +102,7 @@ mod test {
             panic!("{}", e);
         });
         assert_eq!(r.vault_home, Path::new("./vault"));
-        assert_eq!(r.daily_home, Path::new("./daily"));
-        assert_eq!(r.solvespace_template, Path::new("./template"));
+        assert_eq!(r.workspace_home, Path::new("./workspace"));
+        assert_eq!(r.workspace_template, Path::new("./template"));
     }
 }

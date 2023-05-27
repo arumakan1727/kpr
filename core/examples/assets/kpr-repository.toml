@@ -2,10 +2,10 @@
 vault_home = "./vault"
 
 # Directory path for daily workspace
-daily_home = "./daily"
+workspace_home = "./workspace"
 
-# Directory path for problem solve template
-# Files in this dir will be copied when solvespace is created.
+# Directory path for workspace template.
+# Files in this dir will be copied when workspace is created.
 # NOTE: The filename of submittable file should be 'main.*'.
 # (Thus, for example, 'Makefile' will not be recognized as submittable file)
-solvespace_template = "./template"
+workspace_template = "./template"

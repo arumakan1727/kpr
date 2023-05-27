@@ -53,7 +53,7 @@ pub fn init_kpr_repository(dir: impl AsRef<Path>) -> Result<()> {
 
     let r = RepoConfig::from_toml(&toml).unwrap();
 
-    let example_template_filepath = dir.join(&r.solvespace_template).join("main.cpp");
+    let example_template_filepath = dir.join(&r.workspace_template).join("main.cpp");
     let template_code = r#"#include <bits/stdc++.h>
 using namespace std;
 
