@@ -4,4 +4,4 @@ pub mod config;
 pub mod interactive;
 pub mod repository;
 
-pub(crate) mod fsutil;
+pub mod fsutil;

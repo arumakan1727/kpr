@@ -20,6 +20,9 @@ pub mod error {
         #[error("Cannot create symlink (orig='{0}', link={1}): {2}")]
         Symlink(PathBuf, PathBuf, #[source] io::Error),
 
+        #[error("Failed to canonicalize path '{0}': {1}")]
+        CanonicalizePath(PathBuf, io::Error),
+
         #[error("Cannot serialize to JSON (dest='{0}'): {1}")]
         SerializeToJson(PathBuf, #[source] serde_json::Error),
 
@@ -118,6 +121,64 @@ pub fn symlink_dir_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) ->
     use std::os::windows;
     windows::fs::symlink_dir(&orig, &link)
         .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.as_ref().to_owned(), e))
+}
+
+pub fn canonicalize_path(path: impl AsRef<Path>) -> Result<PathBuf> {
+    let path = path.as_ref();
+    path.canonicalize()
+        .map_err(|e| Error::CanonicalizePath(path.to_owned(), e))
+}
+
+/// Calc relative path.
+/// ```
+/// use kpr_core::fsutil::relative_path;
+/// use std::path::Path;
+///
+/// let res = relative_path("/usr/bin/curl", "/usr/share/").unwrap();
+/// assert_eq!(res, Path::new("../share"));
+///
+/// let res = relative_path("/usr/bin/curl", "/usr").unwrap();
+/// assert_eq!(res, Path::new(".."));
+///
+/// let res = relative_path("/usr", "/usr/bin/curl").unwrap();
+/// assert_eq!(res, Path::new("bin/curl"));
+///
+/// let res = relative_path("/usr/bin/curl", "/usr/bin").unwrap();
+/// assert_eq!(res, Path::new("."));
+///
+/// // When `from` is a directory
+/// let res = relative_path("/bin", "/bin").unwrap();
+/// assert_eq!(res, Path::new("."));
+///
+/// // When `from` is a file
+/// let res = relative_path("/bin/sh", "/bin/sh").unwrap();
+/// assert_eq!(res, Path::new("sh"));
+/// ```
+pub fn relative_path<P1, P2>(from: P1, to: P2) -> Result<PathBuf>
+where
+    P1: AsRef<Path>,
+    P2: AsRef<Path>,
+{
+    let from = self::canonicalize_path(from)?;
+    let to = self::canonicalize_path(to)?;
+
+    let mut dir = if from.is_dir() {
+        from.as_ref()
+    } else {
+        from.parent().unwrap()
+    };
+
+    if dir == to {
+        return Ok(PathBuf::from("."));
+    }
+
+    let mut ans = PathBuf::new();
+    while !to.starts_with(dir) {
+        dir = dir.parent().unwrap();
+        ans.push("..");
+    }
+    ans.push(to.strip_prefix(dir).unwrap());
+    Ok(ans)
 }
 
 pub struct SingleFileDriver {
