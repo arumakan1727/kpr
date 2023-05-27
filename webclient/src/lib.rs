@@ -6,7 +6,7 @@ pub mod model;
 pub mod atcoder;
 
 // re-exports
-pub use atcoder::AtCoderClient;
+pub use atcoder::{AtCoderClient, AtCoderUrlAnalyzer};
 pub use error::*;
 pub use model::*;
 

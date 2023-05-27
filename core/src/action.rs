@@ -80,7 +80,7 @@ pub async fn save_problem_data(
     let problem_dir = config::problem_dir(
         &repo.vault_home,
         cli.platform(),
-        cli.get_problem_unique_name(url.path()).unwrap(),
+        cli.problem_global_id(url.path()).unwrap(),
     );
     repository::save_problem_metadata(&problem_meta, &problem_dir)
         .context("Failed to save problem metadata")?;

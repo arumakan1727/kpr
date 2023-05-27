@@ -1,5 +1,5 @@
-use crate::{model::Url, IdName, IdNameError, Platform, UrlAnalyzer};
-use lazy_regex::{lazy_regex, Lazy, Regex};
+use crate::{global_id, GlobalId, Platform, Url, UrlAnalyzer};
+use ::lazy_regex::{lazy_regex, Lazy, Regex};
 
 pub(super) static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
 pub(super) static RE_PROBLEM_URL_PATH: Lazy<Regex> =
@@ -29,13 +29,14 @@ impl UrlAnalyzer for AtCoderUrlAnalyzer {
         Self::is_supported_origin(url) && RE_PROBLEM_URL_PATH.is_match(url.path())
     }
 
-    fn problem_id_name(url: &Url) -> std::result::Result<IdName, IdNameError> {
+    fn problem_global_id(url: &Url) -> global_id::Result<GlobalId> {
+        use global_id::Error;
         if !Self::is_supported_origin(url) {
-            return Err(IdNameError::UnknownOrigin(url.to_owned()));
+            return Err(Error::UnknownOrigin(url.to_owned()));
         }
         let Some(caps) = RE_PROBLEM_URL_PATH.captures(url.path()) else {
-            return Err(IdNameError::NotProblemUrl(url.to_owned(), Platform::AtCoder))
+            return Err(Error::NotProblemUrl(url.to_owned(), Platform::AtCoder))
         };
-        Ok(IdName(caps[2].to_owned()))
+        Ok(GlobalId(caps[2].to_owned()))
     }
 }

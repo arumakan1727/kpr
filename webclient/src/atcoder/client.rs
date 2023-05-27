@@ -174,8 +174,8 @@ impl Client for AtCoderClient {
         AtCoderUrlAnalyzer::is_problem_url(url)
     }
 
-    fn problem_id_name(&self, url: &Url) -> IdNameResult {
-        AtCoderUrlAnalyzer::problem_id_name(url)
+    fn problem_global_id(&self, url: &Url) -> global_id::Result<GlobalId> {
+        AtCoderUrlAnalyzer::problem_global_id(url)
     }
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
@@ -282,12 +282,12 @@ impl Client for AtCoderClient {
                 parse_memory_str_as_kb(memory_limit),
             )
         };
-        let id_name = unsafe { self.problem_id_name(problem_url).unwrap_unchecked() };
+        let global_id = unsafe { self.problem_global_id(problem_url).unwrap_unchecked() };
         let testcases = scrape_testcases(&doc)?;
         let meta = ProblemMeta {
             platform: self.platform(),
             url: problem_url.to_string(),
-            id_name,
+            global_id,
             title,
             execution_time_limit,
             memory_limit_kb,
@@ -295,14 +295,14 @@ impl Client for AtCoderClient {
         Ok((meta, testcases))
     }
 
-    fn credential_fields(&self) -> &'static [CredField] {
+    fn credential_fields(&self) -> &'static [CredFieldMeta] {
         use CredFieldKind::*;
         &[
-            CredField {
+            CredFieldMeta {
                 name: "username",
                 kind: Text,
             },
-            CredField {
+            CredFieldMeta {
                 name: "password",
                 kind: Password,
             },

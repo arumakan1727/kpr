@@ -1,4 +1,4 @@
-use kpr_webclient::{CredField, CredFieldKind, CredMap};
+use kpr_webclient::{CredFieldMeta, CredFieldKind, CredMap};
 
 pub mod util {
     use dialoguer::{theme::ColorfulTheme, Input, Password};
@@ -21,10 +21,10 @@ pub mod util {
     }
 }
 
-pub fn ask_credential(fields: &[CredField]) -> CredMap {
+pub fn ask_credential(fields: &[CredFieldMeta]) -> CredMap {
     let mut map = CredMap::new();
 
-    for CredField { name, kind } in fields {
+    for CredFieldMeta { name, kind } in fields {
         use CredFieldKind::*;
 
         let value = match kind {
