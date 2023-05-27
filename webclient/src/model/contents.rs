@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use super::atom::*;
-use super::global_id::GlobalId;
+use super::problem_id::ProblemGlobalId;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ContestInfo {
@@ -25,7 +25,7 @@ pub struct ContestProblemOutline {
 pub struct ProblemMeta {
     pub platform: Platform,
     pub url: String,
-    pub global_id: GlobalId,
+    pub global_id: ProblemGlobalId,
     pub title: String,
     pub execution_time_limit: Duration,
     pub memory_limit_kb: u32,

@@ -174,7 +174,7 @@ impl Client for AtCoderClient {
         AtCoderUrlAnalyzer::is_problem_url(url)
     }
 
-    fn problem_global_id(&self, url: &Url) -> global_id::Result<GlobalId> {
+    fn problem_global_id(&self, url: &Url) -> problem_id::Result<ProblemGlobalId> {
         AtCoderUrlAnalyzer::problem_global_id(url)
     }
 

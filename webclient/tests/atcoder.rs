@@ -214,7 +214,7 @@ async fn fetch_abc003_4_detail() {
         ProblemMeta {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
-            global_id: GlobalId::try_from(&url).unwrap(),
+            global_id: ProblemGlobalId::try_from(&url).unwrap(),
             title: "AtCoder社の冬".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 64 * 1024,
@@ -262,7 +262,7 @@ async fn fetch_abc086_a_detail() {
         ProblemMeta {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
-            global_id: GlobalId::try_from(&url).unwrap(),
+            global_id: ProblemGlobalId::try_from(&url).unwrap(),
             title: "Product".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 256 * 1024,

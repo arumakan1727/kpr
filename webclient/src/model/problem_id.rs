@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use super::atom::{Platform, Url};
 use crate::{AtCoderUrlAnalyzer, UrlAnalyzer as _};
 use serde::{Deserialize, Serialize};
@@ -19,9 +21,9 @@ pub enum Error {
 /// Globally unique problem identification.
 /// (e.g.) "abc234_a", "atcoder_typical90_az", "aoj1234"
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Serialize, Deserialize)]
-pub struct GlobalId(pub(crate) String);
+pub struct ProblemGlobalId(pub(crate) String);
 
-impl<'a> TryFrom<&'a Url> for GlobalId {
+impl<'a> TryFrom<&'a Url> for ProblemGlobalId {
     type Error = Error;
 
     fn try_from(url: &'a Url) -> Result<Self> {
@@ -35,14 +37,26 @@ impl<'a> TryFrom<&'a Url> for GlobalId {
     }
 }
 
-impl std::fmt::Display for GlobalId {
+impl std::fmt::Display for ProblemGlobalId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl AsRef<str> for GlobalId {
+impl AsRef<str> for ProblemGlobalId {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+impl AsRef<Path> for ProblemGlobalId {
+    fn as_ref(&self) -> &Path {
+        self.0.as_ref()
+    }
+}
+
+impl From<ProblemGlobalId> for String {
+    fn from(value: ProblemGlobalId) -> Self {
+        value.0
     }
 }
