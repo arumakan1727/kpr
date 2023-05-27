@@ -6,7 +6,7 @@ pub mod problem_id;
 pub use atom::*;
 pub use contents::*;
 pub use credential::*;
-pub use problem_id::ProblemGlobalId;
+pub use problem_id::ProblemId;
 
 use crate::error::Result;
 use async_trait::async_trait;
@@ -15,7 +15,7 @@ pub trait UrlAnalyzer {
     fn is_supported_origin(url: &Url) -> bool;
     fn is_contest_home_url(url: &Url) -> bool;
     fn is_problem_url(url: &Url) -> bool;
-    fn problem_global_id(url: &Url) -> problem_id::Result<ProblemGlobalId>;
+    fn extract_problem_id(url: &Url) -> problem_id::Result<ProblemId>;
 }
 
 #[async_trait]
@@ -26,7 +26,7 @@ pub trait Client {
 
     fn is_problem_url(&self, url: &Url) -> bool;
 
-    fn problem_global_id(&self, url: &Url) -> problem_id::Result<ProblemGlobalId>;
+    fn extract_problem_id(&self, url: &Url) -> problem_id::Result<ProblemId>;
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo>;
 

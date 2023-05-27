@@ -29,6 +29,18 @@ pub fn extract_302_location_header(
     Ok(bytes.to_str().unwrap().to_owned())
 }
 
+pub fn starts_with_anyone<'a, S, I, T>(s: S, prefixes: I) -> bool
+where
+    S: AsRef<str>,
+    I: IntoIterator<Item = &'a T>,
+    T: AsRef<str> + 'a,
+{
+    let s = s.as_ref();
+    prefixes
+        .into_iter()
+        .any(|prefix| s.starts_with(prefix.as_ref()))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

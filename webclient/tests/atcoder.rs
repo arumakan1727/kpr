@@ -60,22 +60,46 @@ fn should_not_be_contest_home_url() {
 }
 
 #[test]
-fn test_problem_global_id() {
+fn extract_problem_id_ok() {
     let cli = AtCoderClient::new();
-    let problem_global_id = move |url: &str| {
-        cli.problem_global_id(&Url::parse(url).unwrap())
-            .map(|global_id| global_id.to_string())
+    let problem_id = move |url: &str| {
+        cli.extract_problem_id(&Url::parse(url).unwrap())
+            .map(|problem_id| problem_id.to_string())
     };
 
     assert_eq!(
-        problem_global_id("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
+        problem_id("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
         "abc001_1"
     );
     assert_eq!(
-        problem_global_id("https://atcoder.jp/contests/abc334/tasks/abc334_f").unwrap(),
+        problem_id("https://atcoder.jp/contests/abc334/tasks/abc334_f").unwrap(),
         "abc334_f"
     );
-    assert!(problem_global_id("https://atcoder.jp/contests/abc334").is_err());
+    assert_eq!(
+        problem_id("https://atcoder.jp/contests/typical90/tasks/typical90_a").unwrap(),
+        "typical90_a"
+    );
+    assert_eq!(
+        problem_id("https://atcoder.jp/contests/practice2/tasks/practice2_a").unwrap(),
+        "practice2_a"
+    );
+}
+#[test]
+fn extract_problem_id_ng() {
+    let cli = AtCoderClient::new();
+    let problem_id_err = move |url: &str| {
+        cli.extract_problem_id(&Url::parse(url).unwrap())
+            .unwrap_err()
+    };
+    use problem_id::Error;
+    assert!(matches!(
+        problem_id_err("https://atcoder.jp/contests/abc334"),
+        Error::NotProblemUrl(_, Platform::AtCoder)
+    ));
+    assert!(matches!(
+        problem_id_err("https://atcoder.com/contests/abc334"),
+        Error::UnknownOrigin(_)
+    ));
 }
 
 #[test]
@@ -214,7 +238,7 @@ async fn fetch_abc003_4_detail() {
         ProblemMeta {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
-            global_id: ProblemGlobalId::try_from(&url).unwrap(),
+            problem_id: ProblemId::try_from(&url).unwrap(),
             title: "AtCoder社の冬".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 64 * 1024,
@@ -262,7 +286,7 @@ async fn fetch_abc086_a_detail() {
         ProblemMeta {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
-            global_id: ProblemGlobalId::try_from(&url).unwrap(),
+            problem_id: ProblemId::try_from(&url).unwrap(),
             title: "Product".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 256 * 1024,

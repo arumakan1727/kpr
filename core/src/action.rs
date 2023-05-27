@@ -95,7 +95,7 @@ pub async fn ensure_problem_data_saved(
     ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
 
     let platform = cli.platform();
-    let problem_id = cli.problem_global_id(url).unwrap();
+    let problem_id = cli.extract_problem_id(url).unwrap();
     let vault = Vault::new(&repo.vault_home);
 
     if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {

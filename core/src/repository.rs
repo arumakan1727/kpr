@@ -4,7 +4,7 @@ pub mod error {
 
 use std::path::{Path, PathBuf};
 
-use kpr_webclient::{Platform, ProblemMeta, ProblemGlobalId, Testcase};
+use kpr_webclient::{Platform, ProblemId, ProblemMeta, Testcase};
 
 use self::error::Result;
 use crate::fsutil;
@@ -68,11 +68,7 @@ impl<'v> Vault<'v> {
         (format!("in{}.txt", ord), format!("out{}.txt", ord))
     }
 
-    pub fn resolve_problem_dir(
-        &self,
-        p: Platform,
-        problem_id: &ProblemGlobalId,
-    ) -> ProblemVaultLocation {
+    pub fn resolve_problem_dir(&self, p: Platform, problem_id: &ProblemId) -> ProblemVaultLocation {
         let dir = self.home.join(p.lowercase()).join(&problem_id);
         ProblemVaultLocation::new(dir)
     }
@@ -82,7 +78,7 @@ impl<'v> Vault<'v> {
         meta: &ProblemMeta,
         ts: impl IntoIterator<Item = &'a Testcase>,
     ) -> Result<ProblemVaultLocation> {
-        let loc = self.resolve_problem_dir(meta.platform, &meta.global_id);
+        let loc = self.resolve_problem_dir(meta.platform, &meta.problem_id);
 
         fsutil::write_json_with_mkdir(loc.metadata_filepath(), meta)?;
 
@@ -98,7 +94,7 @@ impl<'v> Vault<'v> {
     pub fn load_problem_metadata(
         &self,
         plat: Platform,
-        problem_id: &ProblemGlobalId,
+        problem_id: &ProblemId,
     ) -> Result<(ProblemVaultLocation, ProblemMeta)> {
         let loc = self.resolve_problem_dir(plat, problem_id);
         let problem_meta = fsutil::read_json_with_deserialize(loc.metadata_filepath())?;

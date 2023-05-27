@@ -174,8 +174,8 @@ impl Client for AtCoderClient {
         AtCoderUrlAnalyzer::is_problem_url(url)
     }
 
-    fn problem_global_id(&self, url: &Url) -> problem_id::Result<ProblemGlobalId> {
-        AtCoderUrlAnalyzer::problem_global_id(url)
+    fn extract_problem_id(&self, url: &Url) -> problem_id::Result<ProblemId> {
+        AtCoderUrlAnalyzer::extract_problem_id(url)
     }
 
     async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
@@ -282,12 +282,12 @@ impl Client for AtCoderClient {
                 parse_memory_str_as_kb(memory_limit),
             )
         };
-        let global_id = unsafe { self.problem_global_id(problem_url).unwrap_unchecked() };
+        let problem_id = unsafe { self.extract_problem_id(problem_url).unwrap_unchecked() };
         let testcases = scrape_testcases(&doc)?;
         let meta = ProblemMeta {
             platform: self.platform(),
             url: problem_url.to_string(),
-            global_id,
+            problem_id,
             title,
             execution_time_limit,
             memory_limit_kb,
