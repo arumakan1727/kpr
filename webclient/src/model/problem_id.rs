@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::atom::{Platform, Url};
 use crate::{util, AtCoderUrlAnalyzer, UrlAnalyzer as _};
@@ -24,6 +24,7 @@ pub enum Error {
 pub struct ProblemId(pub(crate) String);
 
 impl ProblemId {
+    #[allow(dead_code)]
     pub(crate) fn new(problem_id: impl AsRef<str>) -> Self {
         Self(problem_id.as_ref().to_string())
     }
@@ -124,12 +125,6 @@ impl From<ProblemGlobalId> for Platform {
 impl From<ProblemGlobalId> for String {
     fn from(value: ProblemGlobalId) -> Self {
         value.to_string()
-    }
-}
-
-impl From<ProblemGlobalId> for PathBuf {
-    fn from(value: ProblemGlobalId) -> Self {
-        Self::from(value.to_string())
     }
 }
 

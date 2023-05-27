@@ -42,16 +42,13 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
         exit(1);
     });
 
-    let (problem_dir, _, _) = action::fetch_and_save_problem_data(&cli, &url, &repo)
+    action::create_shojin_workspace(&cli, &url, &repo, &chrono::Local::now())
         .await
         .unwrap_or_else(|e| {
-            eprintln!("{}", e);
+            eprintln!("{}: {}", e, e.source().unwrap());
             exit(1);
         });
 
-    println!(
-        "Successfully saved problem data in '{}'",
-        problem_dir.dirpath().to_string_lossy()
-    );
+    println!("Successfully created shojin workspace",);
     exit(0)
 }

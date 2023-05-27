@@ -6,12 +6,13 @@ pub mod error {
 use std::path::Path;
 
 use error::*;
+use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::repository::{ProblemVaultLocation, Vault};
+use crate::repository::{ProblemVaultLocation, Vault, Workspace};
 use crate::{config, fsutil};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -104,4 +105,37 @@ pub async fn ensure_problem_data_saved(
     self::fetch_and_save_problem_data(cli, url, repo)
         .await
         .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
+}
+
+pub type LocalDateTime = chrono::DateTime<chrono::Local>;
+
+pub async fn create_shojin_workspace(
+    cli: &SessionPersistentClient,
+    problem_url: &Url,
+    repo: &QualifiedRepoConfig,
+    today: &LocalDateTime,
+) -> Result<()> {
+    ensure!(
+        cli.is_problem_url(problem_url),
+        "{} is not a problem url",
+        problem_url
+    );
+
+    let (saved_location, meta) = ensure_problem_data_saved(cli, &problem_url, repo).await?;
+
+    let w = Workspace::new(&repo.workspace_home);
+
+    let prefix = {
+        let yyyy = today.format("%Y").to_string();
+        let mmdd_a = today.format("%m%d-%a").to_string();
+        let id = ProblemGlobalId::new(meta.platform, meta.problem_id);
+        Path::new(&yyyy)
+            .join(&mmdd_a)
+            .join("shojin")
+            .join(id.to_string())
+    };
+    w.create_workspace(&prefix, &saved_location, &repo.workspace_template)
+        .context("Failed to create shojin workspace")?;
+
+    Ok(())
 }

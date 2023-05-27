@@ -49,7 +49,6 @@ impl<'v> Vault<'v> {
     pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
 
     pub fn new(vault_home_dir: &'v Path) -> Self {
-        assert!(vault_home_dir.is_absolute());
         Self {
             home: vault_home_dir,
         }
@@ -109,9 +108,22 @@ impl<'w> Workspace<'w> {
         }
     }
 
-    pub fn load_problem_metadata(&self, plat: Platform, id: &GlobalId) -> Result<ProblemMeta> {
-        let dir = self.resolve_problem_dir(plat, id);
-        let filepath = dir.join(config::PROBLEM_METADATA_FILENAME);
-        fsutil::read_json_with_deserialize(filepath)
+    pub fn create_workspace(
+        &self,
+        prefix: impl AsRef<Path>,
+        vault: &ProblemVaultLocation,
+        template_dir: impl AsRef<Path>,
+    ) -> Result<()> {
+        let workspace_dir = self.home.join(prefix);
+        fsutil::symlink_using_relpath_with_mkdir(
+            vault.metadata_filepath(),
+            workspace_dir.join(Vault::PROBLEM_METADATA_FILENAME),
+        )?;
+        fsutil::symlink_using_relpath_with_mkdir(
+            vault.testcase_dirpath(),
+            workspace_dir.join(Vault::TESTCASE_DIR_NAME),
+        )?;
+        fsutil::copy_contents_all(template_dir, &workspace_dir)?;
+        Ok(())
     }
 }

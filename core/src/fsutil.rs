@@ -1,6 +1,6 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    fs::{self, File},
+    fs::{self, File, ReadDir},
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -16,6 +16,9 @@ pub mod error {
     pub enum Error {
         #[error("{0} ({1}): {2}")]
         SingleIO(Msg, PathBuf, #[source] io::Error),
+
+        #[error("{0} (from='{1}', to='{2}): {3}")]
+        FromToIO(Msg, PathBuf, PathBuf, #[source] io::Error),
 
         #[error("Cannot create symlink (orig='{0}', link={1}): {2}")]
         Symlink(PathBuf, PathBuf, #[source] io::Error),
@@ -90,6 +93,52 @@ where
 }
 
 #[must_use]
+pub fn copy_file(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<u64> {
+    fs::copy(&from, &to).map_err(|e| {
+        Error::FromToIO(
+            "Cannot copy file",
+            from.as_ref().to_owned(),
+            to.as_ref().to_owned(),
+            e,
+        )
+    })
+}
+
+#[must_use]
+pub fn copy_contents_all(src_dir: impl AsRef<Path>, dst_dir: impl AsRef<Path>) -> Result<()> {
+    self::mkdir_all(&dst_dir)?;
+    for entry in self::read_dir(&src_dir)? {
+        let entry = entry.map_err(|e| {
+            Error::FromToIO(
+                "Cannot access dir entry on `copy_contents_all()`",
+                src_dir.as_ref().to_owned(),
+                dst_dir.as_ref().to_owned(),
+                e,
+            )
+        })?;
+        let dst = dst_dir.as_ref().join(entry.file_name());
+        let ty = entry.file_type().map_err(|e| {
+            Error::SingleIO(
+                "Cannot get filetype on `copy_contents_all()`",
+                entry.path(),
+                e,
+            )
+        })?;
+        if ty.is_dir() {
+            self::copy_contents_all(entry.path(), dst)?;
+        } else {
+            self::copy_file(entry.path(), dst)?;
+        }
+    }
+    Ok(())
+}
+
+#[must_use]
+pub fn read_dir(dir: impl AsRef<Path>) -> Result<ReadDir> {
+    fs::read_dir(&dir).map_err(|e| Error::SingleIO("Cannot read dir", dir.as_ref().to_owned(), e))
+}
+
+#[must_use]
 #[cfg(unix)]
 pub fn symlink_file_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
     if let Some(dir) = link.as_ref().parent() {
@@ -121,6 +170,22 @@ pub fn symlink_dir_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) ->
     use std::os::windows;
     windows::fs::symlink_dir(&orig, &link)
         .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.as_ref().to_owned(), e))
+}
+
+pub fn symlink_using_relpath_with_mkdir(
+    orig: impl AsRef<Path>,
+    link: impl AsRef<Path>,
+) -> Result<()> {
+    if let Some(dir) = link.as_ref().parent() {
+        self::mkdir_all(dir)?;
+    }
+    let relpath = self::relative_path(&link, &orig)?;
+
+    if orig.as_ref().is_file() {
+        symlink_file_with_mkdir(relpath, link)
+    } else {
+        symlink_dir_with_mkdir(relpath, link)
+    }
 }
 
 pub fn canonicalize_path(path: impl AsRef<Path>) -> Result<PathBuf> {
@@ -159,20 +224,22 @@ where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
 {
-    let from = self::canonicalize_path(from)?;
-    let to = self::canonicalize_path(to)?;
-
-    let mut dir = if from.is_dir() {
-        from.as_ref()
+    let from = from.as_ref();
+    let from_dir = if from.is_dir() {
+        from
     } else {
         from.parent().unwrap()
     };
 
-    if dir == to {
+    let from_dir = self::canonicalize_path(from_dir)?;
+    let to = self::canonicalize_path(to)?;
+
+    if from_dir == to {
         return Ok(PathBuf::from("."));
     }
 
     let mut ans = PathBuf::new();
+    let mut dir = from_dir.as_path();
     while !to.starts_with(dir) {
         dir = dir.parent().unwrap();
         ans.push("..");

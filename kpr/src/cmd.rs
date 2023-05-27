@@ -2,6 +2,7 @@ pub mod fetch;
 pub mod init;
 pub mod login;
 pub mod logout;
+pub mod shojin;
 
 use std::path::PathBuf;
 
@@ -21,6 +22,7 @@ pub enum Subcommand {
     Logout(logout::Args),
     Init(init::Args),
     Fetch(fetch::Args),
+    Shojin(shojin::Args),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
@@ -37,6 +39,7 @@ impl GlobalArgs {
             Logout(args) => logout::exec(args, self).await,
             Init(args) => init::exec(args, self),
             Fetch(args) => fetch::exec(args, self).await,
+            Shojin(args) => shojin::exec(args, self).await,
         }
     }
 }
