@@ -9,9 +9,7 @@ use serde::Deserialize;
 
 use crate::fsutil;
 
-pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
 pub const REPOSITORY_CONFIG_FILENAME: &str = "kpr-repository.toml";
-pub const VAULT_TESTCASE_DIR_NAME: &str = "testcase";
 
 pub fn authtoken_filename(platform: Platform) -> String {
     format!("{}-auth.json", platform.lowercase())

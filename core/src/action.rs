@@ -3,7 +3,7 @@ pub mod error {
     pub(crate) use anyhow::{anyhow, bail, ensure, Context as _};
     pub use anyhow::{Error, Result};
 }
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use error::*;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
@@ -11,7 +11,7 @@ use kpr_webclient::{ProblemMeta, Testcase, Url};
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::repository::Vault;
+use crate::repository::{ProblemVaultLocation, Vault};
 use crate::{config, fsutil};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -70,44 +70,36 @@ pub async fn save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &QualifiedRepoConfig,
-) -> Result<(PathBuf, ProblemMeta, Vec<Testcase>)> {
+) -> Result<(ProblemVaultLocation, ProblemMeta, Vec<Testcase>)> {
     ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
 
     let (problem_meta, testcases) = cli
         .fetch_problem_detail(url)
         .await
         .context("Failed to fetch testcase")?;
+
     let vault = Vault::new(&repo.vault_home);
-    let platform = cli.platform();
-    let problem_id = &problem_meta.global_id;
-    vault
-        .save_problem_metadata(&problem_meta)
-        .context("Failed to save problem metadata")?;
-    vault
-        .save_testcases(&testcases, platform, problem_id)
-        .context("Failed to save testcase")?;
-    Ok((
-        vault.resolve_problem_dir(platform, problem_id),
-        problem_meta,
-        testcases,
-    ))
+
+    let saved_location = vault
+        .save_problem_data(&problem_meta, &testcases)
+        .context("Failed to save problem data")?;
+
+    Ok((saved_location, problem_meta, testcases))
 }
 
 pub async fn ensure_problem_data_saved(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &QualifiedRepoConfig,
-) -> Result<(PathBuf, ProblemMeta)> {
+) -> Result<(ProblemVaultLocation, ProblemMeta)> {
     ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
 
     let platform = cli.platform();
     let problem_id = cli.problem_global_id(url).unwrap();
     let vault = Vault::new(&repo.vault_home);
-    if let Ok(problem_meta) = vault.load_problem_metadata(platform, &problem_id) {
-        return Ok((
-            vault.resolve_problem_dir(platform, &problem_id),
-            problem_meta,
-        ));
+
+    if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {
+        return Ok((loc, problem_meta));
     }
     self::save_problem_data(cli, url, repo)
         .await
