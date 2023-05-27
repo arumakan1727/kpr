@@ -11,7 +11,8 @@ use kpr_webclient::{ProblemMeta, Testcase, Url};
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::{config, fsutil, repository};
+use crate::repository::Vault;
+use crate::{config, fsutil};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -76,17 +77,39 @@ pub async fn save_problem_data(
         .fetch_problem_detail(url)
         .await
         .context("Failed to fetch testcase")?;
-
-    let problem_dir = config::problem_dir(
-        &repo.vault_home,
-        cli.platform(),
-        cli.problem_global_id(url.path()).unwrap(),
-    );
-    repository::save_problem_metadata(&problem_meta, &problem_dir)
+    let vault = Vault::new(&repo.vault_home);
+    let platform = cli.platform();
+    let problem_id = &problem_meta.global_id;
+    vault
+        .save_problem_metadata(&problem_meta)
         .context("Failed to save problem metadata")?;
+    vault
+        .save_testcases(&testcases, platform, problem_id)
+        .context("Failed to save testcase")?;
+    Ok((
+        vault.resolve_problem_dir(platform, problem_id),
+        problem_meta,
+        testcases,
+    ))
+}
 
-    let testcase_dir = problem_dir.join(config::VAULT_TESTCASE_DIR_NAME);
-    repository::save_testcases(&testcases, &testcase_dir).context("Failed to save testcase")?;
+pub async fn ensure_problem_data_saved(
+    cli: &SessionPersistentClient,
+    url: &Url,
+    repo: &QualifiedRepoConfig,
+) -> Result<(PathBuf, ProblemMeta)> {
+    ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
 
-    Ok((problem_dir, problem_meta, testcases))
+    let platform = cli.platform();
+    let problem_id = cli.problem_global_id(url).unwrap();
+    let vault = Vault::new(&repo.vault_home);
+    if let Ok(problem_meta) = vault.load_problem_metadata(platform, &problem_id) {
+        return Ok((
+            vault.resolve_problem_dir(platform, &problem_id),
+            problem_meta,
+        ));
+    }
+    self::save_problem_data(cli, url, repo)
+        .await
+        .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
 }

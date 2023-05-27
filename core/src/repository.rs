@@ -2,44 +2,68 @@ pub mod error {
     pub use crate::fsutil::error::*;
 }
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use error::Result;
-use kpr_webclient::{ProblemMeta, Testcase};
+use kpr_webclient::{GlobalId, Platform, ProblemMeta, Testcase};
 
+use self::error::Result;
 use crate::{config, fsutil};
 
-pub fn save_testcase(t: &Testcase, dir: impl AsRef<Path>) -> Result<()> {
-    let dir = dir.as_ref();
-    let (infile, outfile) = config::testcase_filename(t.ord);
-    fsutil::write_with_mkdir(dir.join(&infile), &t.input)?;
-    fsutil::write_with_mkdir(dir.join(&outfile), &t.expected)?;
-    Ok(())
+pub struct Vault<'a> {
+    pub home: &'a Path,
 }
 
-pub fn save_testcases<'a>(
-    ts: impl IntoIterator<Item = &'a Testcase>,
-    dir: impl AsRef<Path>,
-) -> Result<()> {
-    for t in ts {
-        save_testcase(t, &dir)?;
+impl<'v> Vault<'v> {
+    pub fn new(home_dir: &'v Path) -> Self {
+        Self { home: home_dir }
     }
-    Ok(())
-}
 
-pub fn save_problem_metadata(data: &ProblemMeta, dir: impl AsRef<Path>) -> Result<()> {
-    let filepath = dir.as_ref().join(config::PROBLEM_METADATA_FILENAME);
-    fsutil::write_json_with_mkdir(filepath, data)
-}
+    /// Returns tuple (input_filename, output_filename).
+    ///
+    /// ```
+    /// use kpr_core::repository::Vault;
+    ///
+    /// let (infile, outfile) = Vault::testcase_filename(1);
+    /// assert_eq!(infile, "in1.txt");
+    /// assert_eq!(outfile, "out1.txt");
+    /// ```
+    pub fn testcase_filename(ord: u32) -> (String, String) {
+        (format!("in{}.txt", ord), format!("out{}.txt", ord))
+    }
 
-pub fn load_problem_metadata(dir: impl AsRef<Path>) -> Result<ProblemMeta> {
-    let filepath = dir.as_ref().join(config::PROBLEM_METADATA_FILENAME);
-    fsutil::read_json_with_deserialize(filepath)
-}
+    pub fn resolve_problem_dir(&self, p: Platform, problem_id: &GlobalId) -> PathBuf {
+        self.home.join(p.lowercase()).join(problem_id.as_ref())
+    }
 
-pub fn exists_problem_data(dir: impl AsRef<Path>, testcase_dir_name: &str) -> bool {
-    let dir = dir.as_ref();
-    let metadata_filepath = dir.join(config::PROBLEM_METADATA_FILENAME);
-    let testcase_dirpath = dir.join(testcase_dir_name);
-    metadata_filepath.is_file() && testcase_dirpath.is_dir()
+    pub fn save_testcase(&self, t: &Testcase, p: Platform, problem_id: &GlobalId) -> Result<()> {
+        let dir = self.resolve_problem_dir(p, problem_id);
+        let (infile, outfile) = Self::testcase_filename(t.ord);
+        fsutil::write_with_mkdir(dir.join(&infile), &t.input)?;
+        fsutil::write_with_mkdir(dir.join(&outfile), &t.expected)?;
+        Ok(())
+    }
+
+    pub fn save_testcases<'a>(
+        &self,
+        ts: impl IntoIterator<Item = &'a Testcase>,
+        plat: Platform,
+        problem_id: &GlobalId,
+    ) -> Result<()> {
+        for t in ts {
+            self.save_testcase(t, plat, problem_id)?;
+        }
+        Ok(())
+    }
+
+    pub fn save_problem_metadata(&self, data: &ProblemMeta) -> Result<()> {
+        let dir = self.resolve_problem_dir(data.platform, &data.global_id);
+        let filepath = dir.join(config::PROBLEM_METADATA_FILENAME);
+        fsutil::write_json_with_mkdir(filepath, data)
+    }
+
+    pub fn load_problem_metadata(&self, plat: Platform, id: &GlobalId) -> Result<ProblemMeta> {
+        let dir = self.resolve_problem_dir(plat, id);
+        let filepath = dir.join(config::PROBLEM_METADATA_FILENAME);
+        fsutil::read_json_with_deserialize(filepath)
+    }
 }

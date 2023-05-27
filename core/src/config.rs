@@ -17,29 +17,6 @@ pub fn authtoken_filename(platform: Platform) -> String {
     format!("{}-auth.json", platform.lowercase())
 }
 
-pub fn problem_dir(
-    dir: impl AsRef<Path>,
-    p: Platform,
-    problem_unique_name: impl AsRef<str>,
-) -> PathBuf {
-    dir.as_ref()
-        .join(p.lowercase())
-        .join(problem_unique_name.as_ref())
-}
-
-/// Returns tuple (input_filename, output_filename).
-///
-/// ```
-/// use kpr_core::config::testcase_filename;
-///
-/// let (infile, outfile) = testcase_filename(1);
-/// assert_eq!(infile, "in1.txt");
-/// assert_eq!(outfile, "out1.txt");
-/// ```
-pub fn testcase_filename(ord: u32) -> (String, String) {
-    (format!("in{}.txt", ord), format!("out{}.txt", ord))
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct RepoConfig {
     pub vault_home: PathBuf,
