@@ -42,7 +42,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
         exit(1);
     });
 
-    let (problem_dir, _, _) = action::save_problem_data(&cli, &url, &repo)
+    let (problem_dir, _, _) = action::fetch_and_save_problem_data(&cli, &url, &repo)
         .await
         .unwrap_or_else(|e| {
             eprintln!("{}", e);

@@ -66,7 +66,7 @@ int main() {
 }
 
 /// Returns (saved_problem_dir_path, metadata, testcases)
-pub async fn save_problem_data(
+pub async fn fetch_and_save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &QualifiedRepoConfig,
@@ -101,7 +101,7 @@ pub async fn ensure_problem_data_saved(
     if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {
         return Ok((loc, problem_meta));
     }
-    self::save_problem_data(cli, url, repo)
+    self::fetch_and_save_problem_data(cli, url, repo)
         .await
         .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
 }
