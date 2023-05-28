@@ -12,7 +12,7 @@ use kpr_webclient::{ProblemMeta, Testcase, Url};
 use crate::client::SessionPersistentClient;
 use crate::config::{QualifiedRepoConfig, RepoConfig};
 use crate::interactive::ask_credential;
-use crate::repository::{ProblemVaultLocation, Vault, Workspace};
+use crate::repository::{ProblemVaultLocation, ProblemWorkspaceLocation, Vault, Workspace};
 use crate::{config, fsutil};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -114,7 +114,7 @@ pub async fn create_shojin_workspace(
     problem_url: &Url,
     repo: &QualifiedRepoConfig,
     today: &LocalDateTime,
-) -> Result<()> {
+) -> Result<ProblemWorkspaceLocation> {
     ensure!(
         cli.is_problem_url(problem_url),
         "{} is not a problem url",
@@ -134,8 +134,8 @@ pub async fn create_shojin_workspace(
             .join("shojin")
             .join(id.to_string())
     };
-    w.create_workspace(&prefix, &saved_location, &repo.workspace_template)
+    let loc = w
+        .create_workspace(&prefix, &saved_location, &repo.workspace_template)
         .context("Failed to create shojin workspace")?;
-
-    Ok(())
+    Ok(loc)
 }

@@ -42,13 +42,16 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> ! {
         exit(1);
     });
 
-    action::create_shojin_workspace(&cli, &url, &repo, &chrono::Local::now())
+    let saved_loc = action::create_shojin_workspace(&cli, &url, &repo, &chrono::Local::now())
         .await
         .unwrap_or_else(|e| {
             eprintln!("{}: {}", e, e.source().unwrap());
             exit(1);
         });
 
-    println!("Successfully created shojin workspace",);
+    println!(
+        "Successfully created shojin workspace in {}",
+        saved_loc.dirpath().to_string_lossy()
+    );
     exit(0)
 }

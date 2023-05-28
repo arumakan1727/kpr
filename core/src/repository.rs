@@ -16,11 +16,16 @@ pub struct Vault<'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Workspace<'a> {
-    pub home: &'a Path,
+    home: &'a Path,
 }
 
 #[derive(Debug, Clone)]
 pub struct ProblemVaultLocation {
+    problem_dir: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProblemWorkspaceLocation {
     problem_dir: PathBuf,
 }
 
@@ -45,8 +50,8 @@ impl ProblemVaultLocation {
 }
 
 impl<'v> Vault<'v> {
-    pub const TESTCASE_DIR_NAME: &str = "testcase";
-    pub const PROBLEM_METADATA_FILENAME: &str = "problem.json";
+    const TESTCASE_DIR_NAME: &str = "testcase";
+    const PROBLEM_METADATA_FILENAME: &str = "problem.json";
 
     pub fn new(vault_home_dir: &'v Path) -> Self {
         Self {
@@ -72,6 +77,7 @@ impl<'v> Vault<'v> {
         ProblemVaultLocation::new(dir)
     }
 
+    #[must_use]
     pub fn save_problem_data<'a>(
         &self,
         meta: &ProblemMeta,
@@ -91,6 +97,7 @@ impl<'v> Vault<'v> {
         Ok(loc)
     }
 
+    #[must_use]
     pub fn load_problem_metadata(
         &self,
         plat: Platform,
@@ -102,9 +109,29 @@ impl<'v> Vault<'v> {
     }
 }
 
+impl ProblemWorkspaceLocation {
+    fn new(problem_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            problem_dir: problem_dir.into(),
+        }
+    }
+
+    pub fn dirpath(&self) -> &Path {
+        &self.problem_dir
+    }
+
+    pub fn metadata_filepath(&self) -> PathBuf {
+        self.problem_dir.join(Workspace::PROBLEM_METADATA_FILENAME)
+    }
+
+    pub fn testcase_dirpath(&self) -> PathBuf {
+        self.problem_dir.join(Workspace::TESTCASE_DIR_NAME)
+    }
+}
+
 impl<'w> Workspace<'w> {
-    pub const TESTCASE_DIR_NAME: &str = "testcase";
-    pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
+    const TESTCASE_DIR_NAME: &str = "testcase";
+    const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
 
     pub fn new(workspace_home_dir: &'w Path) -> Self {
         Self {
@@ -112,22 +139,23 @@ impl<'w> Workspace<'w> {
         }
     }
 
+    #[must_use]
     pub fn create_workspace(
         &self,
         prefix: impl AsRef<Path>,
         vault: &ProblemVaultLocation,
         template_dir: impl AsRef<Path>,
-    ) -> Result<()> {
-        let workspace_dir = self.home.join(prefix);
+    ) -> Result<ProblemWorkspaceLocation> {
+        let workspace = ProblemWorkspaceLocation::new(self.home.join(prefix));
         fsutil::symlink_using_relpath_with_mkdir(
             vault.metadata_filepath(),
-            workspace_dir.join(Self::PROBLEM_METADATA_FILENAME),
+            workspace.metadata_filepath(),
         )?;
         fsutil::symlink_using_relpath_with_mkdir(
             vault.testcase_dirpath(),
-            workspace_dir.join(Self::TESTCASE_DIR_NAME),
+            workspace.testcase_dirpath(),
         )?;
-        fsutil::copy_contents_all(template_dir, &workspace_dir)?;
-        Ok(())
+        fsutil::copy_contents_all(template_dir, workspace.dirpath())?;
+        Ok(workspace)
     }
 }
