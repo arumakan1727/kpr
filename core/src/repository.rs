@@ -46,7 +46,7 @@ impl ProblemVaultLocation {
 
 impl<'v> Vault<'v> {
     pub const TESTCASE_DIR_NAME: &str = "testcase";
-    pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
+    pub const PROBLEM_METADATA_FILENAME: &str = "problem.json";
 
     pub fn new(vault_home_dir: &'v Path) -> Self {
         Self {
@@ -102,6 +102,9 @@ impl<'v> Vault<'v> {
 }
 
 impl<'w> Workspace<'w> {
+    pub const TESTCASE_DIR_NAME: &str = "testcase";
+    pub const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
+
     pub fn new(workspace_home_dir: &'w Path) -> Self {
         Self {
             home: workspace_home_dir,
@@ -117,11 +120,11 @@ impl<'w> Workspace<'w> {
         let workspace_dir = self.home.join(prefix);
         fsutil::symlink_using_relpath_with_mkdir(
             vault.metadata_filepath(),
-            workspace_dir.join(Vault::PROBLEM_METADATA_FILENAME),
+            workspace_dir.join(Self::PROBLEM_METADATA_FILENAME),
         )?;
         fsutil::symlink_using_relpath_with_mkdir(
             vault.testcase_dirpath(),
-            workspace_dir.join(Vault::TESTCASE_DIR_NAME),
+            workspace_dir.join(Self::TESTCASE_DIR_NAME),
         )?;
         fsutil::copy_contents_all(template_dir, &workspace_dir)?;
         Ok(())
