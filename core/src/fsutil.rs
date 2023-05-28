@@ -24,7 +24,7 @@ pub mod error {
         Symlink(PathBuf, PathBuf, #[source] io::Error),
 
         #[error("Failed to canonicalize path '{0}': {1}")]
-        CanonicalizePath(PathBuf, io::Error),
+        CanonicalizePath(PathBuf, #[source] io::Error),
 
         #[error("Cannot serialize to JSON (dest='{0}'): {1}")]
         SerializeToJson(PathBuf, #[source] serde_json::Error),
@@ -33,7 +33,6 @@ pub mod error {
         DeserializeFromJson(PathBuf, #[source] serde_json::Error),
     }
 }
-
 use error::*;
 
 #[must_use]
@@ -140,36 +139,28 @@ pub fn read_dir(dir: impl AsRef<Path>) -> Result<ReadDir> {
 
 #[must_use]
 #[cfg(unix)]
-pub fn symlink_file_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
-    if let Some(dir) = link.as_ref().parent() {
-        self::mkdir_all(dir)?;
+pub fn symlink(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
+    let link = link.as_ref();
+    if link.is_symlink() {
+        fs::remove_file(&link).map_err(|e| {
+            Error::SingleIO(
+                "Cannot create symlink: failed to remove existing symlink",
+                link.to_owned(),
+                e,
+            )
+        })?;
     }
     use std::os::unix;
     unix::fs::symlink(&orig, &link)
-        .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.as_ref().to_owned(), e))
+        .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.to_owned(), e))
 }
 
 #[must_use]
-#[cfg(windows)]
-pub fn symlink_file_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
-    use std::os::windows;
-    windows::fs::symlink_file(&orig, &link)
-        .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.as_ref().to_owned(), e))
-}
-
-#[must_use]
-#[cfg(unix)]
-pub fn symlink_dir_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
-    // On unix, it is not necessary to distinguish whether the symlink origin is a file or a directory.
-    self::symlink_file_with_mkdir(orig, link)
-}
-
-#[must_use]
-#[cfg(windows)]
-pub fn symlink_dir_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
-    use std::os::windows;
-    windows::fs::symlink_dir(&orig, &link)
-        .map_err(|e| Error::Symlink(orig.as_ref().to_owned(), link.as_ref().to_owned(), e))
+pub fn symlink_with_mkdir(orig: impl AsRef<Path>, link: impl AsRef<Path>) -> Result<()> {
+    if let Some(dir) = link.as_ref().parent() {
+        self::mkdir_all(dir)?;
+    }
+    self::symlink(orig, link)
 }
 
 pub fn symlink_using_relpath_with_mkdir(
@@ -180,12 +171,7 @@ pub fn symlink_using_relpath_with_mkdir(
         self::mkdir_all(dir)?;
     }
     let relpath = self::relative_path(&link, &orig)?;
-
-    if orig.as_ref().is_file() {
-        symlink_file_with_mkdir(relpath, link)
-    } else {
-        symlink_dir_with_mkdir(relpath, link)
-    }
+    symlink(relpath, link)
 }
 
 pub fn canonicalize_path(path: impl AsRef<Path>) -> Result<PathBuf> {
