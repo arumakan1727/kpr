@@ -82,10 +82,11 @@ impl<'v> Vault<'v> {
         fsutil::write_json_with_mkdir(loc.metadata_filepath(), meta)?;
 
         let testcase_dir = loc.testcase_dirpath();
+        fsutil::mkdir_all(&testcase_dir)?;
         for t in ts {
             let (infile, outfile) = Self::testcase_filename(t.ord);
-            fsutil::write_with_mkdir(testcase_dir.join(infile), &t.input)?;
-            fsutil::write_with_mkdir(testcase_dir.join(outfile), &t.expected)?;
+            fsutil::write(testcase_dir.join(infile), &t.input)?;
+            fsutil::write(testcase_dir.join(outfile), &t.expected)?;
         }
         Ok(loc)
     }

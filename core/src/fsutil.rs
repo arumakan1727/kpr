@@ -42,17 +42,25 @@ pub fn mkdir_all(path: impl AsRef<Path>) -> Result<()> {
 }
 
 #[must_use]
+pub fn write<P, C>(filepath: P, contents: C) -> Result<()>
+where
+    P: AsRef<Path>,
+    C: AsRef<[u8]>,
+{
+    fs::write(&filepath, contents)
+        .map_err(|e| Error::SingleIO("Cannot write file", filepath.as_ref().to_owned(), e))
+}
+
+#[must_use]
 pub fn write_with_mkdir<P, C>(filepath: P, contents: C) -> Result<()>
 where
     P: AsRef<Path>,
     C: AsRef<[u8]>,
 {
-    let filepath = filepath.as_ref();
-    if let Some(dir) = filepath.parent() {
+    if let Some(dir) = filepath.as_ref().parent() {
         self::mkdir_all(dir)?;
     }
-    fs::write(filepath, contents)
-        .map_err(|e| Error::SingleIO("Cannot write file", filepath.to_owned(), e))
+    self::write(filepath, contents)
 }
 
 #[must_use]
