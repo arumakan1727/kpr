@@ -111,8 +111,17 @@ pub fn copy_file(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<u64> {
     })
 }
 
+#[derive(Debug, Clone)]
+pub struct OptCopyContents {
+    pub overwrite_existing_file: bool,
+}
+
 #[must_use]
-pub fn copy_contents_all(src_dir: impl AsRef<Path>, dst_dir: impl AsRef<Path>) -> Result<()> {
+pub fn copy_contents_all(
+    src_dir: impl AsRef<Path>,
+    dst_dir: impl AsRef<Path>,
+    opt: &OptCopyContents,
+) -> Result<()> {
     self::mkdir_all(&dst_dir)?;
     for entry in self::read_dir(&src_dir)? {
         let entry = entry.map_err(|e| {
@@ -132,9 +141,11 @@ pub fn copy_contents_all(src_dir: impl AsRef<Path>, dst_dir: impl AsRef<Path>) -
             )
         })?;
         if ty.is_dir() {
-            self::copy_contents_all(entry.path(), dst)?;
+            self::copy_contents_all(entry.path(), dst, opt)?;
         } else {
-            self::copy_file(entry.path(), dst)?;
+            if opt.overwrite_existing_file || !dst.exists() {
+                self::copy_file(entry.path(), dst)?;
+            }
         }
     }
     Ok(())

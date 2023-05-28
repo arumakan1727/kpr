@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use kpr_webclient::{Platform, ProblemId, ProblemMeta, Testcase};
 
 use self::error::Result;
-use crate::fsutil;
+use crate::fsutil::{self, OptCopyContents};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vault<'a> {
@@ -155,7 +155,13 @@ impl<'w> Workspace<'w> {
             vault.testcase_dirpath(),
             workspace.testcase_dirpath(),
         )?;
-        fsutil::copy_contents_all(template_dir, workspace.dirpath())?;
+        fsutil::copy_contents_all(
+            template_dir,
+            workspace.dirpath(),
+            &OptCopyContents {
+                overwrite_existing_file: false,
+            },
+        )?;
         Ok(workspace)
     }
 }
