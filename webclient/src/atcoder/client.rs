@@ -74,7 +74,7 @@ fn extract_testcase(pre: ElementRef) -> String {
 }
 
 fn scrape_testcases(doc: &Html) -> Result<Vec<Testcase>> {
-    let sel_parts_modern_ver = Selector::parse("#task-statement .lang-en > .part").unwrap();
+    let sel_parts_modern_ver = Selector::parse("#task-statement .lang-ja > .part").unwrap();
     let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
     let sel_h3 = Selector::parse("h3").unwrap();
     let sel_pre = Selector::parse("pre").unwrap();

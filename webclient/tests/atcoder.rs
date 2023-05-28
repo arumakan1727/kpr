@@ -14,7 +14,7 @@ use testconfig::TestConfig;
 
 fn sleep_random_ms() {
     let mut rng = rand::thread_rng();
-    let ms = Duration::from_millis(rng.gen_range(200..1000));
+    let ms = Duration::from_millis(rng.gen_range(400..800));
     thread::sleep(ms);
 }
 
@@ -304,6 +304,65 @@ async fn fetch_abc086_a_detail() {
                 ord: 2,
                 input: "1 21".to_owned(),
                 expected: "Odd".to_owned(),
+            },
+        ]
+    )
+}
+
+#[tokio::test]
+async fn fetch_typical90_az_detail() {
+    // Avoid DDos attack
+    sleep_random_ms();
+
+    let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_az/";
+    let url = Url::parse(url_str).unwrap();
+    let cli = AtCoderClient::new();
+    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+
+    assert_eq!(
+        problem_meta,
+        ProblemMeta {
+            platform: Platform::AtCoder,
+            url: url_str.to_owned(),
+            problem_id: ProblemId::try_from(&url).unwrap(),
+            title: "Dice Product（★3）".to_owned(),
+            execution_time_limit: Duration::from_secs(2),
+            memory_limit_kb: 1024 * 1024,
+        }
+    );
+    assert_eq!(
+        testcases,
+        vec![
+            Testcase {
+                ord: 1,
+                input: "\
+2
+1 2 3 5 7 11
+4 6 8 9 10 12"
+                    .to_owned(),
+                expected: "1421".to_owned(),
+            },
+            Testcase {
+                ord: 2,
+                input: "\
+1
+11 13 17 19 23 29"
+                    .to_owned(),
+                expected: "112".to_owned(),
+            },
+            Testcase {
+                ord: 3,
+                input: "\
+7
+19 23 51 59 91 99
+15 45 56 65 69 94
+7 11 16 34 59 95
+27 30 40 43 83 85
+19 23 25 27 45 99
+27 48 52 53 60 81
+21 36 49 72 82 84"
+                    .to_owned(),
+                expected: "670838273".to_owned(),
             },
         ]
     )
