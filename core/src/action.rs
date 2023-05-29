@@ -4,14 +4,18 @@ pub mod error {
     pub use anyhow::{Error, Result};
 }
 use std::path::Path;
+use std::time::Duration;
 
+use chrono::{DateTime, Local};
 use error::*;
 use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::interactive::ask_credential;
-use crate::storage::{ProblemVaultLocation, ProblemWorkspaceLocation, Repository};
+use crate::storage::{
+    ProblemVaultLocation, ProblemWorkspaceLocation, Repository, WorkspaceNameModifier,
+};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -53,7 +57,7 @@ pub async fn fetch_and_save_problem_data(
     url: &Url,
     repo: &Repository,
 ) -> Result<(ProblemVaultLocation, ProblemMeta, Vec<Testcase>)> {
-    ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
+    ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let (problem_meta, testcases) = cli
         .fetch_problem_detail(url)
@@ -74,7 +78,7 @@ pub async fn ensure_problem_data_saved(
     url: &Url,
     repo: &Repository,
 ) -> Result<(ProblemVaultLocation, ProblemMeta)> {
-    ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
+    ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let platform = cli.platform();
     let problem_id = cli.extract_problem_id(url).unwrap();
@@ -88,35 +92,90 @@ pub async fn ensure_problem_data_saved(
         .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
 }
 
-pub type LocalDateTime = chrono::DateTime<chrono::Local>;
-
 pub async fn create_shojin_workspace(
     cli: &SessionPersistentClient,
     problem_url: &Url,
     repo: &Repository,
-    today: &LocalDateTime,
+    today: DateTime<Local>,
 ) -> Result<ProblemWorkspaceLocation> {
     ensure!(
         cli.is_problem_url(problem_url),
-        "{} is not a problem url",
+        "Not a problem url: {}",
         problem_url
     );
 
-    let (saved_location, meta) = ensure_problem_data_saved(cli, &problem_url, repo).await?;
+    let (saved_location, meta) = self::ensure_problem_data_saved(cli, &problem_url, repo).await?;
 
-    let w = repo.workspace();
-
-    let prefix = {
-        let yyyy = today.format("%Y").to_string();
-        let mmdd_a = today.format("%m%d-%a").to_string();
-        let id = ProblemGlobalId::new(meta.platform, meta.problem_id);
-        Path::new(&yyyy)
-            .join(&mmdd_a)
-            .join("shojin")
-            .join(id.to_string())
-    };
-    let loc = w
-        .create_workspace(&prefix, &saved_location, &repo.workspace_template)
+    let problem_id = ProblemGlobalId::new(meta.platform, meta.problem_id);
+    let loc = repo
+        .workspace()
+        .create_workspace(
+            &saved_location,
+            &repo.workspace_template,
+            WorkspaceNameModifier {
+                today,
+                category: "shojin",
+                name: &problem_id.to_string(),
+            },
+        )
         .context("Failed to create shojin workspace")?;
     Ok(loc)
+}
+
+pub async fn create_contest_workspace(
+    cli: &SessionPersistentClient,
+    contest_url: &Url,
+    repo: &Repository,
+    today: DateTime<Local>,
+) -> Result<Vec<ProblemWorkspaceLocation>> {
+    ensure!(
+        cli.is_contest_home_url(contest_url),
+        "Not a contest url: {}",
+        contest_url,
+    );
+    let contest = cli
+        .fetch_contest_info(contest_url)
+        .await
+        .with_context(|| format!("Failed to fetch contest info (url={})", contest_url))?;
+
+    let serial_code = if contest.problems.len() <= 26 {
+        // 1 => "a",  2 => "b",  3 => "c", ...
+        |ord: u32| ((b'a' + (ord - 1) as u8) as char).to_string()
+    } else {
+        |ord: u32| format!("{:02}", ord)
+    };
+
+    let w = repo.workspace();
+    let mut workspace_locations = Vec::new();
+
+    for problem in &contest.problems {
+        // Avoid Dos attack
+        std::thread::sleep(Duration::from_millis(200));
+
+        let url = Url::parse(&problem.url).with_context(|| {
+            format!(
+                "Failed to get correct problem url (contest_url={})",
+                contest_url
+            )
+        })?;
+
+        let (vault_loc, _meta) = self::ensure_problem_data_saved(cli, &url, repo).await?;
+        let loc = w
+            .create_workspace(
+                &vault_loc,
+                &repo.workspace_template,
+                WorkspaceNameModifier {
+                    today,
+                    category: &contest.short_title,
+                    name: &serial_code(problem.ord),
+                },
+            )
+            .context("Failed to create contest workspace")?;
+        println!(
+            "Successfully created workspace {}",
+            loc.dirpath().to_string_lossy()
+        );
+        workspace_locations.push(loc);
+    }
+    Ok(workspace_locations)
 }

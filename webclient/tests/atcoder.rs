@@ -175,7 +175,7 @@ fn should_not_be_problem_url() {
 
 #[tokio::test]
 async fn fetch_abc001_info() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let url = "https://atcoder.jp/contests/abc001";
@@ -225,7 +225,7 @@ async fn fetch_abc001_info() {
 
 #[tokio::test]
 async fn fetch_abc003_4_detail() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let url_str = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
@@ -273,7 +273,7 @@ async fn fetch_abc003_4_detail() {
 
 #[tokio::test]
 async fn fetch_abc086_a_detail() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let url_str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
@@ -311,7 +311,7 @@ async fn fetch_abc086_a_detail() {
 
 #[tokio::test]
 async fn fetch_typical90_az_detail() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_az/";
@@ -389,7 +389,7 @@ static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006")
 const URL_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
 
 async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     cli.submit(
@@ -407,7 +407,7 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
 
 #[tokio::test]
 async fn senario_login_submit_logout() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let auth_json = {
@@ -440,7 +440,7 @@ async fn senario_login_submit_logout() {
 
 #[tokio::test]
 async fn login_with_wrong_password_should_be_fail() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let mut cli = AtCoderClient::new();
@@ -470,7 +470,7 @@ async fn login_with_wrong_password_should_be_fail() {
 
 #[tokio::test]
 async fn submit_without_logined_should_be_fail() {
-    // Avoid DDos attack
+    // Avoid Dos attack
     sleep_random_ms();
 
     let cli = AtCoderClient::new();

@@ -1,4 +1,3 @@
-use anyhow::ensure;
 use chrono::Local;
 use kpr_core::{action, client::SessionPersistentClient, storage::Repository};
 
@@ -16,11 +15,9 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let (cli, url) =
         SessionPersistentClient::new_with_parse_url(&args.problem_url, &cfg.cache_dir)?;
 
-    ensure!(cli.is_problem_url(&url), "Not a problem URL: '{}'", url);
-
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
-    let saved_loc = action::create_shojin_workspace(&cli, &url, &repo, &Local::now()).await?;
+    let saved_loc = action::create_shojin_workspace(&cli, &url, &repo, Local::now()).await?;
 
     println!(
         "Successfully created shojin workspace in {}",
