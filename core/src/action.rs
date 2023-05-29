@@ -4,6 +4,7 @@ pub mod error {
     pub use anyhow::{Error, Result};
 }
 use std::path::Path;
+use std::time::Duration;
 
 use chrono::{DateTime, Local};
 use error::*;
@@ -121,6 +122,60 @@ pub async fn create_shojin_workspace(
     Ok(loc)
 }
 
+pub async fn create_contest_workspace(
+    cli: &SessionPersistentClient,
+    contest_url: &Url,
+    repo: &Repository,
+    today: DateTime<Local>,
+) -> Result<Vec<ProblemWorkspaceLocation>> {
+    ensure!(
+        cli.is_contest_home_url(contest_url),
+        "Not a contest url: {}",
+        contest_url,
+    );
+    let contest = cli
+        .fetch_contest_info(contest_url)
+        .await
+        .with_context(|| format!("Failed to fetch contest info (url={})", contest_url))?;
 
+    let serial_code = if contest.problems.len() <= 26 {
+        // 1 => "a",  2 => "b",  3 => "c", ...
+        |ord: u32| ((b'a' + (ord - 1) as u8) as char).to_string()
+    } else {
+        |ord: u32| format!("{:02}", ord)
     };
+
+    let w = repo.workspace();
+    let mut workspace_locations = Vec::new();
+
+    for problem in &contest.problems {
+        // Avoid Dos attack
+        std::thread::sleep(Duration::from_millis(200));
+
+        let url = Url::parse(&problem.url).with_context(|| {
+            format!(
+                "Failed to get correct problem url (contest_url={})",
+                contest_url
+            )
+        })?;
+
+        let (vault_loc, _meta) = self::ensure_problem_data_saved(cli, &url, repo).await?;
+        let loc = w
+            .create_workspace(
+                &vault_loc,
+                &repo.workspace_template,
+                WorkspaceNameModifier {
+                    today,
+                    category: &contest.short_title,
+                    name: &serial_code(problem.ord),
+                },
+            )
+            .context("Failed to create contest workspace")?;
+        println!(
+            "Successfully created workspace {}",
+            loc.dirpath().to_string_lossy()
+        );
+        workspace_locations.push(loc);
+    }
+    Ok(workspace_locations)
 }

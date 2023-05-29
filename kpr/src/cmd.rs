@@ -1,3 +1,4 @@
+pub mod contest;
 pub mod fetch;
 pub mod init;
 pub mod login;
@@ -23,6 +24,7 @@ pub enum Subcommand {
     Init(init::Args),
     Fetch(fetch::Args),
     Shojin(shojin::Args),
+    Contest(contest::Args),
 }
 
 pub type SubcmdResult = anyhow::Result<()>;
@@ -36,6 +38,7 @@ impl GlobalArgs {
             Init(args) => init::exec(args, self),
             Fetch(args) => fetch::exec(args, self).await,
             Shojin(args) => shojin::exec(args, self).await,
+            Contest(args) => contest::exec(args, self).await,
         }
     }
 }
