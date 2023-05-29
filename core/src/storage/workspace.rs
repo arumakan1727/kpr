@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Local};
+
 use crate::fsutil::{self, OptCopyContents};
 
 use super::{error::Result, vault::ProblemVaultLocation};
@@ -14,10 +16,23 @@ pub struct ProblemWorkspaceLocation {
     problem_dir: PathBuf,
 }
 
+pub struct WorkspaceNameModifier<'categ, 'name> {
+    pub today: DateTime<Local>,
+    pub category: &'categ str,
+    pub name: &'name str,
+}
+
 impl ProblemWorkspaceLocation {
-    fn new(problem_dir: impl Into<PathBuf>) -> Self {
+    fn new(workspace_home: impl AsRef<Path>, w: WorkspaceNameModifier) -> Self {
+        let yyyy = w.today.format("%Y").to_string();
+        let mmdd_a = w.today.format("%m%d-%a").to_string();
         Self {
-            problem_dir: problem_dir.into(),
+            problem_dir: workspace_home
+                .as_ref()
+                .join(yyyy)
+                .join(mmdd_a)
+                .join(w.category)
+                .join(w.name),
         }
     }
 
@@ -48,11 +63,11 @@ impl<'w> Workspace<'w> {
     #[must_use]
     pub fn create_workspace(
         &self,
-        prefix: impl AsRef<Path>,
         vault: &ProblemVaultLocation,
         template_dir: impl AsRef<Path>,
+        name: WorkspaceNameModifier,
     ) -> Result<ProblemWorkspaceLocation> {
-        let workspace = ProblemWorkspaceLocation::new(self.home.join(prefix));
+        let workspace = ProblemWorkspaceLocation::new(self.home, name);
         fsutil::symlink_using_relpath_with_mkdir(
             vault.metadata_filepath(),
             workspace.metadata_filepath(),

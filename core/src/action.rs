@@ -5,13 +5,16 @@ pub mod error {
 }
 use std::path::Path;
 
+use chrono::{DateTime, Local};
 use error::*;
 use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::interactive::ask_credential;
-use crate::storage::{ProblemVaultLocation, ProblemWorkspaceLocation, Repository};
+use crate::storage::{
+    ProblemVaultLocation, ProblemWorkspaceLocation, Repository, WorkspaceNameModifier,
+};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -74,7 +77,7 @@ pub async fn ensure_problem_data_saved(
     url: &Url,
     repo: &Repository,
 ) -> Result<(ProblemVaultLocation, ProblemMeta)> {
-    ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
+    ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let platform = cli.platform();
     let problem_id = cli.extract_problem_id(url).unwrap();
@@ -88,35 +91,36 @@ pub async fn ensure_problem_data_saved(
         .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
 }
 
-pub type LocalDateTime = chrono::DateTime<chrono::Local>;
-
 pub async fn create_shojin_workspace(
     cli: &SessionPersistentClient,
     problem_url: &Url,
     repo: &Repository,
-    today: &LocalDateTime,
+    today: DateTime<Local>,
 ) -> Result<ProblemWorkspaceLocation> {
     ensure!(
         cli.is_problem_url(problem_url),
-        "{} is not a problem url",
+        "Not a problem url: {}",
         problem_url
     );
 
-    let (saved_location, meta) = ensure_problem_data_saved(cli, &problem_url, repo).await?;
+    let (saved_location, meta) = self::ensure_problem_data_saved(cli, &problem_url, repo).await?;
 
-    let w = repo.workspace();
-
-    let prefix = {
-        let yyyy = today.format("%Y").to_string();
-        let mmdd_a = today.format("%m%d-%a").to_string();
-        let id = ProblemGlobalId::new(meta.platform, meta.problem_id);
-        Path::new(&yyyy)
-            .join(&mmdd_a)
-            .join("shojin")
-            .join(id.to_string())
-    };
-    let loc = w
-        .create_workspace(&prefix, &saved_location, &repo.workspace_template)
+    let problem_id = ProblemGlobalId::new(meta.platform, meta.problem_id);
+    let loc = repo
+        .workspace()
+        .create_workspace(
+            &saved_location,
+            &repo.workspace_template,
+            WorkspaceNameModifier {
+                today,
+                category: "shojin",
+                name: &problem_id.to_string(),
+            },
+        )
         .context("Failed to create shojin workspace")?;
     Ok(loc)
+}
+
+
+    };
 }
