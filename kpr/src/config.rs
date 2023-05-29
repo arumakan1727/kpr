@@ -1,45 +1,51 @@
-use anyhow::Context as _;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io, path::PathBuf, process};
+use std::{fs::File, io, path::PathBuf};
 
-use crate::cmd::GlobalArgs;
+use crate::{cmd::GlobalArgs, util};
 
-pub const APP_NAME: &'static str = "kpr-cli";
-pub const CONFIG_FILE_NAME: &'static str = "kpr-cli.toml";
-
-pub fn config_file_path() -> PathBuf {
-    let dir = dirs::config_dir().expect("Failed to get user's config dir path");
-    dir.join(APP_NAME).join(CONFIG_FILE_NAME)
-}
-
-fn default_cache_dir() -> PathBuf {
-    let dir = dirs::cache_dir().expect("Failed to get user's cache dir path");
-    dir.join(APP_NAME)
-}
+pub const APP_NAME: &str = "kpr-cli";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(default = "default_cache_dir")]
+    #[serde(default = "Config::default_cache_dir")]
     pub cache_dir: PathBuf,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            cache_dir: default_cache_dir(),
+            cache_dir: Self::default_cache_dir(),
         }
     }
 }
 
 impl Config {
-    pub fn from_file() -> anyhow::Result<Self> {
-        let path = config_file_path();
-        let toml_str = match File::open(&path).map(io::read_to_string) {
-            Ok(Ok(toml)) => toml,
-            _ => return Ok(Config::default()),
+    pub const FILENAME: &str = "kpr-cli.toml";
+
+    pub fn filepath() -> PathBuf {
+        let dir = dirs::config_dir().expect("Failed to get user's config dir path");
+        dir.join(APP_NAME).join(Self::FILENAME)
+    }
+
+    fn default_cache_dir() -> PathBuf {
+        let dir = dirs::cache_dir().expect("Failed to get user's cache dir path");
+        dir.join(APP_NAME)
+    }
+
+    pub fn from_file_or_default() -> Self {
+        let path = Self::filepath();
+        let toml_str = match File::open(&path).and_then(io::read_to_string) {
+            Ok(toml) => toml,
+            _ => return Config::default(),
         };
-        toml::from_str(&toml_str)
-            .with_context(|| format!("Invalid toml content: {}", path.to_string_lossy()))
+        toml::from_str(&toml_str).unwrap_or_else(|e| {
+            eprintln!(
+                "[Warn] Invalid config '{}': {:#}",
+                util::replace_homedir_to_tilde(path).to_string_lossy(),
+                e
+            );
+            Self::default()
+        })
     }
 
     pub fn with_args(mut self, args: &GlobalArgs) -> Self {
@@ -53,12 +59,6 @@ impl Config {
     }
 
     pub fn from_file_and_args(args: &GlobalArgs) -> Self {
-        match Self::from_file() {
-            Ok(cfg) => cfg.with_args(args),
-            Err(e) => {
-                eprintln!("Config error: {}", e);
-                process::exit(1);
-            }
-        }
+        Self::from_file_or_default().with_args(args)
     }
 }

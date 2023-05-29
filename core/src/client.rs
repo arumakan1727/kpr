@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Context};
-use kpr_webclient::Platform;
+use kpr_webclient::{Platform, Url};
 
 use crate::{config, fsutil::SingleFileDriver};
 
@@ -40,8 +40,23 @@ impl SessionPersistentClient {
         x.load_authtoken_if_file_exists().unwrap_or_else(|e| {
             eprintln!("[Warn] Initializing SessionPersistenceClient: {}", e);
         });
-
         x
+    }
+
+    pub fn new_with_parse_url(
+        url: &str,
+        save_dir: impl AsRef<Path>,
+    ) -> anyhow::Result<(Self, Url)> {
+        let url =
+            Url::parse(url).map_err(|e| anyhow!("Failed to parse as URL '{}': {}", url, e))?;
+        let platform = kpr_webclient::detect_platform_from_url(&url).with_context(|| {
+            format!(
+                "Cannot detect platform from URL '{}'\n  Example of supported domain: atcoder.jp",
+                url
+            )
+        })?;
+        let cli = Self::new(platform, save_dir);
+        Ok((cli, url))
     }
 
     pub fn load_authtoken_if_file_exists(&mut self) -> anyhow::Result<()> {
@@ -81,7 +96,7 @@ impl SessionPersistentClient {
     }
 
     #[must_use]
-    pub fn remove_authtoken_from_storagr(&self) -> anyhow::Result<()> {
+    pub fn remove_authtoken_from_storage(&self) -> anyhow::Result<()> {
         self.authtoken_file.remove().map_err(|e| anyhow!(e))
     }
 }

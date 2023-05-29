@@ -25,14 +25,10 @@ pub enum Subcommand {
     Shojin(shojin::Args),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
-#[clap(rename_all = "lower")]
-pub enum ArgPlatform {
-    AtCoder,
-}
+pub type SubcmdResult = anyhow::Result<()>;
 
 impl GlobalArgs {
-    pub async fn exec_subcmd(&self) -> ! {
+    pub async fn exec_subcmd(&self) -> SubcmdResult {
         use Subcommand::*;
         match &self.subcmd {
             Login(args) => login::exec(args, self).await,
@@ -42,6 +38,12 @@ impl GlobalArgs {
             Shojin(args) => shojin::exec(args, self).await,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, clap::ValueEnum)]
+#[clap(rename_all = "lower")]
+pub enum ArgPlatform {
+    AtCoder,
 }
 
 impl From<ArgPlatform> for kpr_webclient::Platform {
