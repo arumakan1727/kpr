@@ -56,7 +56,7 @@ pub async fn fetch_and_save_problem_data(
     url: &Url,
     repo: &Repository,
 ) -> Result<(ProblemVaultLocation, ProblemMeta, Vec<Testcase>)> {
-    ensure!(cli.is_problem_url(url), "{} is not a problem url", url);
+    ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let (problem_meta, testcases) = cli
         .fetch_problem_detail(url)

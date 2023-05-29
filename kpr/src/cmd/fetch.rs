@@ -1,4 +1,3 @@
-use anyhow::ensure;
 use kpr_core::{action, client::SessionPersistentClient, storage::Repository};
 
 use super::{GlobalArgs, SubcmdResult};
@@ -14,8 +13,6 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let cfg = Config::from_file_and_args(global_args);
     let (cli, url) =
         SessionPersistentClient::new_with_parse_url(&args.problem_url, &cfg.cache_dir)?;
-
-    ensure!(cli.is_problem_url(&url), "Not a problem URL: '{}'", url);
 
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
