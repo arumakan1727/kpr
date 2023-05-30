@@ -49,7 +49,8 @@ pub mod glob_map {
             }
         }
 
-        pub fn get(&self, k: &str) -> Option<&V> {
+        pub fn get(&self, k: impl AsRef<str>) -> Option<&V> {
+            let k = k.as_ref();
             self.pairs
                 .iter()
                 .find(|(pattern, _)| pattern.matches(k))

@@ -33,7 +33,7 @@ pub mod error {
         DeserializeFromJson(PathBuf, #[source] serde_json::Error),
     }
 }
-use error::*;
+pub use error::{Error, Result};
 
 #[must_use]
 pub fn mkdir_all(path: impl AsRef<Path>) -> Result<()> {

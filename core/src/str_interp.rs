@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, collections::HashMap, hash::Hash};
+use std::{borrow::Borrow, collections::HashMap, ffi::OsStr, hash::Hash};
 
 pub type Result = std::result::Result<String, InterpError>;
 
@@ -14,7 +14,7 @@ pub enum InterpError {
 pub fn interp<K, V>(fmt: &str, variables: &HashMap<K, V>) -> Result
 where
     K: Borrow<str> + Hash + Eq,
-    V: AsRef<str>,
+    V: AsRef<OsStr>,
 {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     enum State {
@@ -49,7 +49,7 @@ where
                 let Some(value) = variables.get(&var_name) else {
                     return Err(InterpError::UndefinedVar(var_name, pos_open_brace + 1))
                 };
-                res += value.as_ref();
+                res += value.as_ref().to_string_lossy().as_ref();
             }
             (_, InsideBrace) => {
                 var_name.push(c);
