@@ -13,10 +13,12 @@ repository.workspace = true
 [dependencies]
 kpr-webclient = { path = "../webclient/" }
 
+async-trait = "0.1.68"
 anyhow = { workspace = true }
 chrono = { workspace = true }
 dialoguer = { workspace = true }
 glob = { workspace = true }
+once_cell = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 rust-embed = { workspace = true }

@@ -20,12 +20,10 @@ kpr-core = { path = "../core" }
 kpr-webclient = { path = "../webclient/" }
 
 anyhow = { workspace = true }
-async-trait = { workspace = true }
 chrono = { workspace = true }
 clap = {  workspace = true }
 dirs = { workspace = true }
 envy = { workspace = true }
-futures = { workspace = true }
 lazy-regex = { workspace = true }
 once_cell = { workspace = true }
 serde = { workspace = true }

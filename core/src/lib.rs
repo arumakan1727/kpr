@@ -5,7 +5,7 @@ pub mod config;
 pub mod interactive;
 pub mod serdable;
 pub mod storage;
-pub mod testing;
 pub mod str_interp;
+pub mod testing;
 
 pub mod fsutil;
