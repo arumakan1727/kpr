@@ -10,7 +10,7 @@ use crate::{
     fsutil,
 };
 
-use super::{Vault, Workspace};
+use super::{VaultHome, WorkspaceHome};
 
 #[derive(Debug, Clone)]
 pub struct Repository {
@@ -69,13 +69,13 @@ impl Repository {
     }
 
     #[inline]
-    pub fn vault(&self) -> Vault {
-        Vault::new(&self.vault_home)
+    pub fn vault_home(&self) -> VaultHome {
+        VaultHome::new(&self.vault_home)
     }
 
     #[inline]
-    pub fn workspace(&self) -> Workspace {
-        Workspace::new(&self.workspace_home)
+    pub fn workspace_home(&self) -> WorkspaceHome {
+        WorkspaceHome::new(&self.workspace_home)
     }
 
     pub fn init_with_example_config(dir: impl AsRef<Path>) -> anyhow::Result<()> {

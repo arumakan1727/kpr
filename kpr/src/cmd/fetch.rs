@@ -20,7 +20,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     println!(
         "Successfully saved problem data in '{}'",
-        problem_dir.dirpath().to_string_lossy()
+        problem_dir.dir().to_string_lossy()
     );
     Ok(())
 }

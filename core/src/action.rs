@@ -56,7 +56,7 @@ pub async fn fetch_and_save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVaultLocation, ProblemMeta, Vec<Testcase>)> {
+) -> Result<(ProblemVault, ProblemMeta, Vec<Testcase>)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let (problem_meta, testcases) = cli
@@ -64,7 +64,7 @@ pub async fn fetch_and_save_problem_data(
         .await
         .context("Failed to fetch testcase")?;
 
-    let vault = repo.vault();
+    let vault = repo.vault_home();
 
     let saved_location = vault
         .save_problem_data(&problem_meta, &testcases)
@@ -77,12 +77,12 @@ pub async fn ensure_problem_data_saved(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVaultLocation, ProblemMeta)> {
+) -> Result<(ProblemVault, ProblemMeta)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let platform = cli.platform();
     let problem_id = cli.extract_problem_id(url).unwrap();
-    let vault = repo.vault();
+    let vault = repo.vault_home();
 
     if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {
         return Ok((loc, problem_meta));
@@ -97,7 +97,7 @@ pub async fn create_shojin_workspace(
     problem_url: &Url,
     repo: &Repository,
     today: DateTime<Local>,
-) -> Result<ProblemWorkspaceLocation> {
+) -> Result<ProblemWorkspace> {
     ensure!(
         cli.is_problem_url(problem_url),
         "Not a problem url: {}",
@@ -108,7 +108,7 @@ pub async fn create_shojin_workspace(
 
     let problem_id = ProblemGlobalId::new(meta.platform, meta.problem_id);
     let loc = repo
-        .workspace()
+        .workspace_home()
         .create_workspace(
             &saved_location,
             &repo.workspace_template,
@@ -127,7 +127,7 @@ pub async fn create_contest_workspace(
     contest_url: &Url,
     repo: &Repository,
     today: DateTime<Local>,
-) -> Result<Vec<ProblemWorkspaceLocation>> {
+) -> Result<Vec<ProblemWorkspace>> {
     ensure!(
         cli.is_contest_home_url(contest_url),
         "Not a contest url: {}",
@@ -145,7 +145,7 @@ pub async fn create_contest_workspace(
         |ord: u32| format!("{:02}", ord)
     };
 
-    let w = repo.workspace();
+    let w = repo.workspace_home();
     let mut workspace_locations = Vec::new();
 
     for problem in &contest.problems {
@@ -173,7 +173,7 @@ pub async fn create_contest_workspace(
             .context("Failed to create contest workspace")?;
         println!(
             "Successfully created workspace {}",
-            loc.dirpath().to_string_lossy()
+            loc.dir().to_string_lossy()
         );
         workspace_locations.push(loc);
     }

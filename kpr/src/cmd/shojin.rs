@@ -21,7 +21,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     println!(
         "Successfully created shojin workspace in {}",
-        saved_loc.dirpath().to_string_lossy()
+        saved_loc.dir().to_string_lossy()
     );
     Ok(())
 }
