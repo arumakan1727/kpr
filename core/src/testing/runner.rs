@@ -155,19 +155,24 @@ impl TestRunner {
         let mut stdout = proc.stdout.take().context("Failed to open stdout")?;
         let mut stderr = proc.stderr.take().context("Failed to open stderr")?;
 
-        let start_at = tokio::time::Instant::now();
+        tokio::io::copy(&mut input_reader, &mut stdin)
+            .await
+            .context("Failed to pass input-data to stdin")?;
+        drop(input_reader);
 
-        let res = {
-            let fut_stdin = tokio::io::copy(&mut input_reader, &mut stdin);
+        let (res, start_at) = {
             let fut_stdout = tokio::io::copy(&mut stdout, &mut stdout_buf);
             let fut_stderr = tokio::io::copy(&mut stderr, &mut stderr_buf);
             let fut_exit_status = proc.wait();
 
-            tokio::time::timeout(self.execution_time_limit, async {
-                tokio::try_join!(fut_stdin, fut_stdout, fut_stderr, fut_exit_status)
+            let start_at = tokio::time::Instant::now();
+
+            let res = tokio::time::timeout(self.execution_time_limit, async {
+                tokio::try_join!(fut_stdout, fut_stderr, fut_exit_status)
                     .context("Failed to communicate with subprocess")
             })
-            .await
+            .await;
+            (res, start_at)
         };
 
         let execution_time = tokio::time::Instant::now().duration_since(start_at);
@@ -182,7 +187,7 @@ impl TestRunner {
 
             Ok(Err(e)) => bail!(e), // error on communicating with subprocess (io::copy)
 
-            Ok(Ok((_, _, _, exit_status))) => {
+            Ok(Ok((_, _, exit_status))) => {
                 let judge = if !exit_status.success() {
                     JudgeCode::RE
                 } else {
@@ -197,9 +202,9 @@ impl TestRunner {
                     }
                 };
                 let output = ProcessOutput {
-                    status: exit_status,
-                    stdout: stdout_buf,
-                    stderr: stderr_buf,
+                    status: exit_status.code(),
+                    stdout: String::from_utf8_lossy(&stdout_buf).into(),
+                    stderr: String::from_utf8_lossy(&stderr_buf).into(),
                 };
                 (judge, Some(output))
             }
@@ -216,36 +221,119 @@ impl TestRunner {
 
 #[cfg(test)]
 mod test {
-    use std::process::Output;
-
     use super::*;
 
-    async fn run_or_fail<'t, T: AsyncTestcase<'t>>(r: &TestRunner, t: &'t T) -> TestOutcome<'t, T> {
-        r.run(t).await.unwrap_or_else(|e| {
-            panic!("{:?}", e);
-        })
+    struct X {
+        input: &'static str,
+        groundtruth: &'static str,
+        pyscript: &'static str,
+        want_judge: JudgeCode,
+        want_output: Option<ProcessOutput>,
+    }
+
+    async fn run_test(x: X) -> () {
+        let cmd = TestCommand {
+            compile: None,
+            // terminate '  ->  enclose ' with "  ->  restart '
+            run: format!("python3 -c '{}'", x.pyscript.replace("'", r#"'"'"'"#)),
+        };
+        let t = OnMemoryTestcase::<&'static str>::new("sample testcase", x.input, x.groundtruth);
+        let r = TestRunner::new(cmd).execution_time_limit(Duration::from_millis(300));
+
+        let res = dbg!(r.run(&t).await).unwrap();
+        assert_eq!(res.judge, x.want_judge);
+        assert_eq!(res.output, x.want_output);
     }
 
     #[tokio::test]
     async fn should_be_ac() {
-        let cmd = TestCommand {
-            compile: None,
-            run: r#"python3 -c 'print("hello_" + input())'"#.to_owned(),
-        };
-        let t = OnMemoryTestcase::<&'static str>::new("sample", "123\n", "hello_123\n");
-        let r = TestRunner::new(cmd);
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: r#"print("hello_" + input())"#,
+            want_judge: JudgeCode::AC,
+            want_output: Some(ProcessOutput {
+                status: Some(0),
+                stdout: "hello_123\n".into(),
+                stderr: "".into(),
+            }),
+        })
+        .await;
+    }
 
-        let res = run_or_fail(&r, &t).await;
-        dbg!(&res);
-        assert_eq!(res.judge, JudgeCode::AC);
+    #[tokio::test]
+    async fn should_be_ac_even_if_stdin_is_not_read() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: r#"print("hello_123")"#,
+            want_judge: JudgeCode::AC,
+            want_output: Some(ProcessOutput {
+                status: Some(0),
+                stdout: "hello_123\n".into(),
+                stderr: "".into(),
+            }),
+        })
+        .await;
+    }
 
-        let Output {
-            status,
-            stdout,
-            stderr,
-        } = res.output.unwrap();
-        assert_eq!(stdout, t.groundtruth.as_bytes());
-        assert_eq!(status.code(), Some(0));
-        assert!(stderr.is_empty());
+    #[tokio::test]
+    async fn should_be_wa() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: r#"import sys; print("hello_123", file=sys.stderr)"#,
+            want_judge: JudgeCode::WA,
+            want_output: Some(ProcessOutput {
+                status: Some(0),
+                stdout: "".into(),
+                stderr: "hello_123\n".into(),
+            }),
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn should_be_wa_if_just_missing_newline() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: r#"print("hello_123", end='')"#,
+            want_judge: JudgeCode::WA,
+            want_output: Some(ProcessOutput {
+                status: Some(0),
+                stdout: "hello_123".into(),
+                stderr: "".into(),
+            }),
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn should_be_re_even_if_stdout_is_correct() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: r#"print("hello_123"); exit(42)"#,
+            want_judge: JudgeCode::RE,
+            want_output: Some(ProcessOutput {
+                status: Some(42),
+                stdout: "hello_123\n".into(),
+                stderr: "".into(),
+            }),
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn should_be_tle() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: "import time; time.sleep(0.5)",
+            want_judge: JudgeCode::TLE,
+            want_output: None,
+        })
+        .await;
     }
 }

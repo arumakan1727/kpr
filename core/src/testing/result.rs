@@ -1,8 +1,13 @@
-use std::{process, time::Duration};
+use std::time::Duration;
 
 use super::testcase::AsyncTestcase;
 
-pub type ProcessOutput = process::Output;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessOutput {
+    pub status: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct TestOutcome<'t, T>
