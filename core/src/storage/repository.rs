@@ -5,7 +5,10 @@ use std::{
 
 use anyhow::{bail, Context};
 
-use crate::{config::RepoConfig, fsutil};
+use crate::{
+    config::{Config, RepoConfig},
+    fsutil,
+};
 
 use super::{Vault, Workspace};
 
@@ -52,17 +55,17 @@ impl Repository {
     pub fn from_config_file_finding_in_ancestors(
         current_dir: impl AsRef<Path>,
     ) -> anyhow::Result<Self> {
-        let Some(config_filepath) = RepoConfig::find_file_in_ancestors(current_dir) else {
-            bail!("Not in a kpr-repository dir: Cannot find '{}'", RepoConfig::FILENAME);
+        let Some(config_filepath) = Config::find_file_in_ancestors(current_dir) else {
+            bail!("Not in a kpr-repository dir: Cannot find '{}'", Config::FILENAME);
         };
         let cfg = {
             let toml = fsutil::read_to_string(&config_filepath).context("Cannot read a file")?;
-            RepoConfig::from_toml(&toml).with_context(|| {
+            Config::from_toml(&toml).with_context(|| {
                 format!("Invalid config TOML: {}", config_filepath.to_string_lossy())
             })?
         };
         let config_dir = config_filepath.parent().unwrap();
-        Ok(Self::new(config_dir, cfg))
+        Ok(Self::new(config_dir, cfg.repository))
     }
 
     #[inline]
@@ -77,7 +80,7 @@ impl Repository {
 
     pub fn init_with_example_config(dir: impl AsRef<Path>) -> anyhow::Result<()> {
         let dir = dir.as_ref();
-        if let Some(config_filepath) = RepoConfig::find_file_in_ancestors(dir) {
+        if let Some(config_filepath) = Config::find_file_in_ancestors(dir) {
             let path = if config_filepath.is_relative() && !config_filepath.starts_with("./") {
                 Path::new("./").join(config_filepath)
             } else {
@@ -89,8 +92,8 @@ impl Repository {
             );
         }
 
-        let config_filepath = dir.join(RepoConfig::FILENAME);
-        let toml = RepoConfig::example_toml();
+        let config_filepath = dir.join(Config::FILENAME);
+        let toml = Config::example_toml();
         fsutil::write_with_mkdir(config_filepath, &toml)?;
         Ok(())
     }
