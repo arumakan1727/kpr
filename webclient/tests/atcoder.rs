@@ -406,6 +406,35 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
 }
 
 #[tokio::test]
+async fn fetch_language_list_ok() {
+    let cli = {
+        // Avoid Dos attack
+        sleep_random_ms();
+
+        let mut cli = AtCoderClient::new();
+        let TestConfig {
+            atcoder_username: username,
+            atcoder_password: password,
+        } = TestConfig::from_env();
+        cli.login(AtCoderCred { username, password }.into())
+            .await
+            .unwrap_or_else(|e| panic!("{:?}", e));
+        cli
+    };
+
+    let langs = dbg!(cli.fetch_submittable_language_list().await).unwrap();
+    assert!(langs.len() > 65);
+    langs.iter().find(|x| x.name == "C++ (GCC 9.2.1)").unwrap();
+    langs.iter().find(|x| x.name == "Python (3.8.2)").unwrap();
+    langs.iter().find(|x| x.name == "PyPy3 (7.3.0)").unwrap();
+    langs.iter().find(|x| x.name == "Rust (1.42.0)").unwrap();
+    langs
+        .iter()
+        .find(|x| x.name == "Java (OpenJDK 1.8.0)")
+        .unwrap();
+}
+
+#[tokio::test]
 async fn senario_login_submit_logout() {
     // Avoid Dos attack
     sleep_random_ms();

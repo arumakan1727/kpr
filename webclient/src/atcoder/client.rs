@@ -379,6 +379,29 @@ impl Client for AtCoderClient {
         }
     }
 
+    async fn fetch_submittable_language_list(&self) -> Result<Vec<PgLang>> {
+        let url = Url::parse("https://atcoder.jp/contests/practice/custom_test").unwrap();
+        ensure!(
+            self.get_auth().session_id.is_some(),
+            Error::NeedLogin {
+                requested_url: url.to_string(),
+            }
+        );
+        let html = self.http.get(url).send().await?.text().await?;
+        let doc = Html::parse_document(&html);
+
+        let sel = Selector::parse("#select-lang select > option[value]").unwrap();
+
+        let langs: Vec<_> = doc
+            .select(&sel)
+            .map(|el| PgLang {
+                id: el.value().attr("value").unwrap().to_owned(),
+                name: el.text().next().unwrap().trim().to_owned(),
+            })
+            .collect();
+        Ok(langs)
+    }
+
     async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
         ensure!(
             self.get_auth().session_id.is_some(),
