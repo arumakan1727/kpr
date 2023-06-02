@@ -23,6 +23,12 @@ pub mod glob_map {
             Self::default()
         }
 
+        pub fn with_capacity(cap: usize) -> Self {
+            Self {
+                pairs: Vec::with_capacity(cap),
+            }
+        }
+
         pub fn is_empty(&self) -> bool {
             self.pairs.is_empty()
         }
@@ -71,7 +77,11 @@ pub mod glob_map {
         where
             I: IntoIterator<Item = (GlobPattern, V)>,
         {
-            let mut m = Self::new();
+            let iter = iter.into_iter();
+            let mut m = Self::with_capacity({
+                let (min, max) = iter.size_hint();
+                min.max(max.unwrap_or(0))
+            });
             for (k, v) in iter {
                 m.insert(k, v);
             }
