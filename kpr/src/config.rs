@@ -6,20 +6,20 @@ use crate::{cmd::GlobalArgs, util};
 pub const APP_NAME: &str = "kpr-cli";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Config {
-    #[serde(default = "Config::default_cache_dir")]
+pub struct GlobalConfig {
+    #[serde(default = "GlobalConfig::default_cache_dir")]
     pub cache_dir: PathBuf,
 }
 
-impl Default for Config {
+impl Default for GlobalConfig {
     fn default() -> Self {
-        Config {
+        GlobalConfig {
             cache_dir: Self::default_cache_dir(),
         }
     }
 }
 
-impl Config {
+impl GlobalConfig {
     pub const FILENAME: &str = "kpr-cli.toml";
 
     pub fn filepath() -> PathBuf {
@@ -36,7 +36,7 @@ impl Config {
         let path = Self::filepath();
         let toml_str = match File::open(&path).and_then(io::read_to_string) {
             Ok(toml) => toml,
-            _ => return Config::default(),
+            _ => return GlobalConfig::default(),
         };
         toml::from_str(&toml_str).unwrap_or_else(|e| {
             eprintln!(

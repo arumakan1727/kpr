@@ -4,6 +4,7 @@ pub mod init;
 pub mod login;
 pub mod logout;
 pub mod shojin;
+pub mod test;
 
 use std::path::PathBuf;
 
@@ -25,6 +26,9 @@ pub enum Subcommand {
     Fetch(fetch::Args),
     Shojin(shojin::Args),
     Contest(contest::Args),
+
+    #[command(alias("t"))]
+    Test(test::Args),
 }
 
 pub type SubcmdResult = anyhow::Result<()>;
@@ -39,6 +43,7 @@ impl GlobalArgs {
             Fetch(args) => fetch::exec(args, self).await,
             Shojin(args) => shojin::exec(args, self).await,
             Contest(args) => contest::exec(args, self).await,
+            Test(args) => test::exec(args, self).await,
         }
     }
 }

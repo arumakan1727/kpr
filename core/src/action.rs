@@ -12,10 +12,12 @@ use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
+use crate::config::TestConfig;
 use crate::interactive::ask_credential;
 use crate::storage::{
-    ProblemVaultLocation, ProblemWorkspaceLocation, Repository, WorkspaceNameModifier,
+    workspace, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
 };
+use crate::testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -56,7 +58,7 @@ pub async fn fetch_and_save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVaultLocation, ProblemMeta, Vec<Testcase>)> {
+) -> Result<(ProblemVault, ProblemMeta, Vec<Testcase>)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let (problem_meta, testcases) = cli
@@ -64,7 +66,7 @@ pub async fn fetch_and_save_problem_data(
         .await
         .context("Failed to fetch testcase")?;
 
-    let vault = repo.vault();
+    let vault = repo.vault_home();
 
     let saved_location = vault
         .save_problem_data(&problem_meta, &testcases)
@@ -77,12 +79,12 @@ pub async fn ensure_problem_data_saved(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVaultLocation, ProblemMeta)> {
+) -> Result<(ProblemVault, ProblemMeta)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let platform = cli.platform();
     let problem_id = cli.extract_problem_id(url).unwrap();
-    let vault = repo.vault();
+    let vault = repo.vault_home();
 
     if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {
         return Ok((loc, problem_meta));
@@ -97,7 +99,7 @@ pub async fn create_shojin_workspace(
     problem_url: &Url,
     repo: &Repository,
     today: DateTime<Local>,
-) -> Result<ProblemWorkspaceLocation> {
+) -> Result<ProblemWorkspace> {
     ensure!(
         cli.is_problem_url(problem_url),
         "Not a problem url: {}",
@@ -108,7 +110,7 @@ pub async fn create_shojin_workspace(
 
     let problem_id = ProblemGlobalId::new(meta.platform, meta.problem_id);
     let loc = repo
-        .workspace()
+        .workspace_home()
         .create_workspace(
             &saved_location,
             &repo.workspace_template,
@@ -127,7 +129,7 @@ pub async fn create_contest_workspace(
     contest_url: &Url,
     repo: &Repository,
     today: DateTime<Local>,
-) -> Result<Vec<ProblemWorkspaceLocation>> {
+) -> Result<Vec<ProblemWorkspace>> {
     ensure!(
         cli.is_contest_home_url(contest_url),
         "Not a contest url: {}",
@@ -145,7 +147,7 @@ pub async fn create_contest_workspace(
         |ord: u32| format!("{:02}", ord)
     };
 
-    let w = repo.workspace();
+    let w = repo.workspace_home();
     let mut workspace_locations = Vec::new();
 
     for problem in &contest.problems {
@@ -173,9 +175,62 @@ pub async fn create_contest_workspace(
             .context("Failed to create contest workspace")?;
         println!(
             "Successfully created workspace {}",
-            loc.dirpath().to_string_lossy()
+            loc.dir().to_string_lossy()
         );
         workspace_locations.push(loc);
     }
     Ok(workspace_locations)
+}
+
+pub async fn do_test(
+    program_file: impl AsRef<Path>,
+    testcase_dir: impl AsRef<Path>,
+    cfg: &TestConfig,
+) -> Result<Vec<TestOutcome>> {
+    let testcases = FsTestcase::enumerate(&testcase_dir, &workspace::TestcaseFinder)
+        .context("Failed to find testcase")?;
+    if testcases.is_empty() {
+        bail!(
+            "No testcases is saved in {}",
+            testcase_dir.as_ref().to_string_lossy()
+        );
+    }
+
+    let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
+    let cmd = cfg
+        .find_test_cmd_for_filename(&filename)
+        .with_context(|| format!("Undefined test command for filename '{}'", filename))?;
+
+    let runner = TestRunner::new(cmd)
+        .shell(cfg.shell.to_owned())
+        .program_file(&program_file)?;
+
+    if cfg.compile_before_run && runner.is_compile_cmd_defined() {
+        let cmd = runner.get_command().compile.as_ref().unwrap();
+        println!("Compiling {}\n{}", filename, cmd);
+        runner.compile().await?;
+    }
+
+    println!("Run command: {}", runner.get_command().run);
+
+    let mut results = Vec::with_capacity(testcases.len());
+    for t in &testcases {
+        print!("Running testcase {} ... ", t.name());
+
+        let res = runner.run(t).await?;
+        println!("{} {:?}", res.judge, res.execution_time);
+
+        if res.judge != JudgeCode::AC && res.output.is_some() {
+            let o = res.output.as_ref().unwrap();
+            let bold_line = "=".repeat(50);
+            let dash_line = " -".repeat(10);
+            println!("{}", bold_line);
+            println!("{} stdout{}\n{}", dash_line, dash_line, o.stdout);
+            println!("{} stderr{}\n{}", dash_line, dash_line, o.stderr);
+            println!("{}", bold_line);
+        }
+
+        results.push(res);
+    }
+    Ok(results)
 }

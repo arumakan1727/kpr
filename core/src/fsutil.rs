@@ -3,6 +3,7 @@ use std::{
     fs::{self, File, ReadDir},
     io::BufReader,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 pub mod error {
@@ -26,6 +27,9 @@ pub mod error {
         #[error("Failed to canonicalize path '{0}': {1}")]
         CanonicalizePath(PathBuf, #[source] io::Error),
 
+        #[error("No entry matched glob '{0}' in '{1}'")]
+        NoEntryMatchedGlob(::glob::Pattern, PathBuf),
+
         #[error("Cannot serialize to JSON (dest='{0}'): {1}")]
         SerializeToJson(PathBuf, #[source] serde_json::Error),
 
@@ -33,7 +37,7 @@ pub mod error {
         DeserializeFromJson(PathBuf, #[source] serde_json::Error),
     }
 }
-use error::*;
+pub use error::{Error, Result};
 
 #[must_use]
 pub fn mkdir_all(path: impl AsRef<Path>) -> Result<()> {
@@ -251,6 +255,39 @@ where
     }
     ans.push(to.strip_prefix(dir).unwrap());
     Ok(ans)
+}
+
+pub fn find_most_recently_modified_file(
+    dir: impl AsRef<Path>,
+    filename_pattern: &::glob::Pattern,
+) -> Result<PathBuf> {
+    let mut ans_filepath = None;
+    let mut max_modified = SystemTime::UNIX_EPOCH;
+
+    for entry in self::read_dir(&dir)?.filter_map(std::result::Result::ok) {
+        let file_type = entry.file_type();
+        let modified = entry.metadata().and_then(|meta| meta.modified());
+        let (Ok(file_type), Ok(modified)) =  (file_type, modified) else {
+                continue
+            };
+        if file_type.is_dir() {
+            continue;
+        }
+        let filename = entry.file_name();
+        if filename_pattern.matches(filename.to_string_lossy().as_ref()) {
+            if max_modified < modified {
+                max_modified = modified;
+                ans_filepath = Some(entry.path());
+            }
+        }
+    }
+    match ans_filepath {
+        Some(filepath) => Ok(filepath),
+        None => Err(self::Error::NoEntryMatchedGlob(
+            filename_pattern.to_owned(),
+            dir.as_ref().to_owned(),
+        )),
+    }
 }
 
 pub struct SingleFileDriver {
