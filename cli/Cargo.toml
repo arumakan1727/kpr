@@ -1,5 +1,5 @@
 [package]
-name = "kpr"
+name = "kpr-cli"
 version = "0.1.0"
 description = """
 CLI tool for Competitive Programming.

@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "kpr",
+  "cli",
   "core",
   "webclient",
 ]
