@@ -181,3 +181,56 @@ pub async fn create_contest_workspace(
     }
     Ok(workspace_locations)
 }
+
+pub async fn do_test(
+    program_file: impl AsRef<Path>,
+    testcase_dir: impl AsRef<Path>,
+    cfg: &TestConfig,
+) -> Result<Vec<TestOutcome>> {
+    let testcases = FsTestcase::enumerate(&testcase_dir, &workspace::TestcaseFinder)
+        .context("Failed to find testcase")?;
+    if testcases.is_empty() {
+        bail!(
+            "No testcases is saved in {}",
+            testcase_dir.as_ref().to_string_lossy()
+        );
+    }
+
+    let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
+    let cmd = cfg
+        .find_test_cmd_for_filename(&filename)
+        .with_context(|| format!("Undefined test command for filename '{}'", filename))?;
+
+    let runner = TestRunner::new(cmd)
+        .shell(cfg.shell.to_owned())
+        .program_file(&program_file)?;
+
+    if cfg.compile_before_run && runner.is_compile_cmd_defined() {
+        let cmd = runner.get_command().compile.as_ref().unwrap();
+        println!("Compiling {}\n{}", filename, cmd);
+        runner.compile().await?;
+    }
+
+    println!("Run command: {}", runner.get_command().run);
+
+    let mut results = Vec::with_capacity(testcases.len());
+    for t in &testcases {
+        print!("Running testcase {} ... ", t.name());
+
+        let res = runner.run(t).await?;
+        println!("{} {:?}", res.judge, res.execution_time);
+
+        if res.judge != JudgeCode::AC && res.output.is_some() {
+            let o = res.output.as_ref().unwrap();
+            let bold_line = "=".repeat(50);
+            let dash_line = " -".repeat(10);
+            println!("{}", bold_line);
+            println!("{} stdout{}\n{}", dash_line, dash_line, o.stdout);
+            println!("{} stderr{}\n{}", dash_line, dash_line, o.stderr);
+            println!("{}", bold_line);
+        }
+
+        results.push(res);
+    }
+    Ok(results)
+}
