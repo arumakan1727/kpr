@@ -125,7 +125,7 @@ impl TestRunner {
         }
     }
 
-    pub async fn run<'t, T>(&self, testcase: &'t T) -> anyhow::Result<TestOutcome<'t, T>>
+    pub async fn run<'t, T>(&self, testcase: &'t T) -> anyhow::Result<TestOutcome>
     where
         T: AsyncTestcase<'t>,
     {
@@ -213,7 +213,6 @@ impl TestRunner {
 
         Ok(TestOutcome {
             judge,
-            testcase,
             execution_time,
             output,
         })
