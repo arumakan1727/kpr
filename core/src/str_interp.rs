@@ -4,11 +4,11 @@ pub type Result = std::result::Result<String, InterpError>;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum InterpError {
-    #[error("Undefined variable '{0}' at {}", .1+1)]
-    UndefinedVar(String, usize),
+    #[error("Undefined variable '{0}' at {} (fmt={2})", .1+1)]
+    UndefinedVar(String, usize, String),
 
-    #[error("Unclosed brace (found open brace at {})", .0+1)]
-    UnclosedBrace(usize),
+    #[error("Unclosed brace (found open brace at {}, fmt={1})", .0+1)]
+    UnclosedBrace(usize, String),
 }
 
 pub fn interp<K, V>(fmt: &str, variables: &HashMap<K, V>) -> Result
@@ -47,7 +47,7 @@ where
             ('}', InsideBrace) => {
                 state = Normal;
                 let Some(value) = variables.get(&var_name) else {
-                    return Err(InterpError::UndefinedVar(var_name, pos_open_brace + 1))
+                    return Err(InterpError::UndefinedVar(var_name, pos_open_brace + 1, fmt.to_owned()))
                 };
                 res += value.as_ref().to_string_lossy().as_ref();
             }
@@ -62,7 +62,7 @@ where
     }
 
     if state == InsideBrace {
-        Err(InterpError::UnclosedBrace(pos_open_brace))
+        Err(InterpError::UnclosedBrace(pos_open_brace, fmt.to_owned()))
     } else {
         res.shrink_to_fit();
         Ok(res)
@@ -120,13 +120,15 @@ mod test {
             m.insert("age", "999");
             m
         };
+        let fmt = "#{firstName} #{lastName}";
         assert_eq!(
-            interp("#{firstName} #{lastName}", &vars).unwrap_err(),
-            InterpError::UndefinedVar("firstName".to_owned(), 2)
+            interp(fmt, &vars).unwrap_err(),
+            InterpError::UndefinedVar("firstName".to_owned(), 2, fmt.to_owned())
         );
+        let fmt = "#{age} #{hello";
         assert_eq!(
-            interp("#{age} #{hello", &vars).unwrap_err(),
-            InterpError::UnclosedBrace(8),
+            interp(fmt, &vars).unwrap_err(),
+            InterpError::UnclosedBrace(8, fmt.to_owned()),
         );
     }
 }
