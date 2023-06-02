@@ -129,6 +129,7 @@ impl FsTestcase {
                 res.push(t)
             }
         }
+        res.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(res)
     }
 }
