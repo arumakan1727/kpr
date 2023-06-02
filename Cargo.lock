@@ -876,6 +876,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "strum",
  "thiserror",
  "tokio",
  "toml",

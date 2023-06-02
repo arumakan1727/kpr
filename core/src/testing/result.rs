@@ -20,7 +20,7 @@ where
     pub output: Option<ProcessOutput>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
 pub enum JudgeCode {
     AC,
     WA,
