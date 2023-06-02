@@ -1,12 +1,12 @@
-use std::{
-    path::{Path, PathBuf},
-    time::SystemTime,
-};
+use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Local};
 
 use super::{error::Result, vault::ProblemVault};
-use crate::fsutil::{self, OptCopyContents};
+use crate::{
+    fsutil::{self, OptCopyContents},
+    testing::{FsTestcase, FsTestcaseFinder},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WorkspaceHome<'a> {
@@ -28,9 +28,9 @@ impl ProblemWorkspace {
     const TESTCASE_DIR_NAME: &str = "testcase";
     const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
 
-    pub fn new(problem_workspace_dir: impl AsRef<Path>) -> Self {
+    pub fn new(problem_workspace_dir: impl Into<PathBuf>) -> Self {
         Self {
-            dir: problem_workspace_dir.as_ref().to_owned(),
+            dir: problem_workspace_dir.into(),
         }
     }
 
@@ -46,37 +46,33 @@ impl ProblemWorkspace {
         self.dir.join(Self::TESTCASE_DIR_NAME)
     }
 
-    #[must_use]
     pub fn find_most_recently_modified_file(
         &self,
         filename_pattern: &::glob::Pattern,
     ) -> Result<PathBuf> {
-        let mut ans_filepath = None;
-        let mut max_modified = SystemTime::UNIX_EPOCH;
+        fsutil::find_most_recently_modified_file(&self.dir, filename_pattern)
+    }
+}
 
-        for entry in fsutil::read_dir(&self.dir)?.filter_map(std::result::Result::ok) {
-            let file_type = entry.file_type();
-            let modified = entry.metadata().and_then(|meta| meta.modified());
-            let (Ok(file_type), Ok(modified)) =  (file_type, modified) else {
-                continue
-            };
-            if file_type.is_dir() {
-                continue;
-            }
-            let filename = entry.file_name();
-            if filename_pattern.matches(filename.to_string_lossy().as_ref()) {
-                if max_modified < modified {
-                    max_modified = modified;
-                    ans_filepath = Some(entry.path());
-                }
-            }
-        }
-        match ans_filepath {
-            Some(filepath) => Ok(filepath),
-            None => Err(fsutil::Error::NoEntryMatchedGlob(
-                filename_pattern.to_owned(),
-                self.dir.to_owned(),
-            )),
+pub struct TestcaseFinder;
+
+impl FsTestcaseFinder for TestcaseFinder {
+    /// if and only if `path` matches "in{...}.txt", find "out{...}.txt" and return them as FsTestcase
+    fn find_by_input_file_path(&self, path: impl AsRef<Path>) -> Option<FsTestcase> {
+        let in_file_path = path.as_ref();
+        let in_file_name = in_file_path.file_name()?.to_string_lossy();
+
+        let tail = in_file_name.strip_prefix("in")?;
+        let name = tail
+            .strip_suffix(".txt")?
+            .trim_matches(|c| c == '_' || c == '-');
+
+        let out_file_path = in_file_path.with_file_name(format!("out{}", tail));
+
+        if in_file_path.is_file() && out_file_path.is_file() {
+            Some(FsTestcase::new(name, in_file_path, out_file_path))
+        } else {
+            None
         }
     }
 }

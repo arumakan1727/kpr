@@ -12,10 +12,12 @@ use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
+use crate::config::TestConfig;
 use crate::interactive::ask_credential;
 use crate::storage::{
-    ProblemVaultLocation, ProblemWorkspaceLocation, Repository, WorkspaceNameModifier,
+    workspace, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
 };
+use crate::testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
