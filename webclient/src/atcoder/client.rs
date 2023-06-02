@@ -70,7 +70,9 @@ const COOKIE_KEY_SESSION_ID: &str = "REVEL_SESSION";
 
 fn extract_testcase(pre: ElementRef) -> String {
     let node = pre.first_child().unwrap().value();
-    node.as_text().unwrap().trim().to_owned()
+    let mut s = node.as_text().unwrap().trim().to_owned();
+    s.push('\n');
+    s
 }
 
 fn scrape_testcases(doc: &Html) -> Result<Vec<Testcase>> {

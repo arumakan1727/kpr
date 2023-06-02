@@ -249,23 +249,23 @@ async fn fetch_abc003_4_detail() {
         vec![
             Testcase {
                 ord: 1,
-                input: ["3 2", "2 2", "2 2"].join("\n"),
-                expected: "12".to_owned(),
+                input: ["3 2", "2 2", "2 2\n"].join("\n"),
+                expected: "12\n".to_owned(),
             },
             Testcase {
                 ord: 2,
-                input: ["4 5", "3 1", "3 0"].join("\n"),
-                expected: "10".to_owned(),
+                input: ["4 5", "3 1", "3 0\n"].join("\n"),
+                expected: "10\n".to_owned(),
             },
             Testcase {
                 ord: 3,
-                input: ["23 18", "15 13", "100 95"].join("\n"),
-                expected: "364527243".to_owned(),
+                input: ["23 18", "15 13", "100 95\n"].join("\n"),
+                expected: "364527243\n".to_owned(),
             },
             Testcase {
                 ord: 4,
-                input: ["30 30", "24 22", "145 132"].join("\n"),
-                expected: "976668549".to_owned(),
+                input: ["30 30", "24 22", "145 132\n"].join("\n"),
+                expected: "976668549\n".to_owned(),
             },
         ]
     );
@@ -297,13 +297,13 @@ async fn fetch_abc086_a_detail() {
         vec![
             Testcase {
                 ord: 1,
-                input: "3 4".to_owned(),
-                expected: "Even".to_owned(),
+                input: "3 4\n".to_owned(),
+                expected: "Even\n".to_owned(),
             },
             Testcase {
                 ord: 2,
-                input: "1 21".to_owned(),
-                expected: "Odd".to_owned(),
+                input: "1 21\n".to_owned(),
+                expected: "Odd\n".to_owned(),
             },
         ]
     )
@@ -338,17 +338,17 @@ async fn fetch_typical90_az_detail() {
                 input: "\
 2
 1 2 3 5 7 11
-4 6 8 9 10 12"
+4 6 8 9 10 12\n"
                     .to_owned(),
-                expected: "1421".to_owned(),
+                expected: "1421\n".to_owned(),
             },
             Testcase {
                 ord: 2,
                 input: "\
 1
-11 13 17 19 23 29"
+11 13 17 19 23 29\n"
                     .to_owned(),
-                expected: "112".to_owned(),
+                expected: "112\n".to_owned(),
             },
             Testcase {
                 ord: 3,
@@ -360,9 +360,9 @@ async fn fetch_typical90_az_detail() {
 27 30 40 43 83 85
 19 23 25 27 45 99
 27 48 52 53 60 81
-21 36 49 72 82 84"
+21 36 49 72 82 84\n"
                     .to_owned(),
-                expected: "670838273".to_owned(),
+                expected: "670838273\n".to_owned(),
             },
         ]
     )
