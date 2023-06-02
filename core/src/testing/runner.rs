@@ -159,6 +159,7 @@ impl TestRunner {
             .await
             .context("Failed to pass input-data to stdin")?;
         drop(input_reader);
+        drop(stdin); // NOTE: this line is essential
 
         let (res, start_at) = {
             let fut_stdout = tokio::io::copy(&mut stdout, &mut stdout_buf);
