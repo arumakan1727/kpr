@@ -2,7 +2,7 @@ use chrono::Local;
 use kpr_core::{action, client::SessionPersistentClient, storage::Repository};
 
 use super::{GlobalArgs, SubcmdResult};
-use crate::{config::Config, util};
+use crate::{config::GlobalConfig, util};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -11,7 +11,7 @@ pub struct Args {
 }
 
 pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
-    let cfg = Config::from_file_and_args(global_args);
+    let cfg = GlobalConfig::from_file_and_args(global_args);
     let (cli, url) =
         SessionPersistentClient::new_with_parse_url(&args.contest_url, &cfg.cache_dir)?;
 

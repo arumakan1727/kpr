@@ -4,7 +4,7 @@ use kpr_core::{action, client::SessionPersistentClient};
 use kpr_webclient::Platform;
 
 use super::{ArgPlatform, GlobalArgs, SubcmdResult};
-use crate::{config::Config, util};
+use crate::{config::GlobalConfig, util};
 
 #[derive(Debug, clap::Args)]
 pub struct Args {
@@ -27,7 +27,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
         util::dedup(args.platforms.clone())
     };
 
-    let cfg = Config::from_file_and_args(global_args);
+    let cfg = GlobalConfig::from_file_and_args(global_args);
 
     for platform in platforms.into_iter().map(Into::<Platform>::into) {
         let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
