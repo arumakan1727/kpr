@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use kpr_webclient::{Platform, ProblemId, ProblemMeta, Testcase};
+use kpr_webclient::{PgLang, Platform, ProblemId, ProblemMeta, Testcase};
 
 use super::error::Result;
 use crate::fsutil;
@@ -12,6 +12,11 @@ pub struct VaultHome<'a> {
 
 #[derive(Debug, Clone)]
 pub struct ProblemVault {
+    dir: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct PlatformVault {
     dir: PathBuf,
 }
 
@@ -51,12 +56,31 @@ impl ProblemVault {
     }
 }
 
+impl PlatformVault {
+    const SUBMITTABLE_LANGS_FILENAME: &str = "submittable-langs.json";
+
+    pub fn new(platform_vault_dir: impl Into<PathBuf>) -> Self {
+        Self {
+            dir: platform_vault_dir.into(),
+        }
+    }
+
+    pub fn submittable_langs_file(&self) -> PathBuf {
+        self.dir.join(Self::SUBMITTABLE_LANGS_FILENAME)
+    }
+}
+
 impl<'v> VaultHome<'v> {
     #[inline]
     pub fn new(vault_home_dir: &'v Path) -> Self {
         Self {
             home: vault_home_dir,
         }
+    }
+
+    pub fn resolve_platform_dir(&self, p: Platform) -> PlatformVault {
+        let dir = self.home.join(p.lowercase());
+        PlatformVault::new(dir)
     }
 
     pub fn resolve_problem_dir(&self, p: Platform, problem_id: &ProblemId) -> ProblemVault {
@@ -93,5 +117,27 @@ impl<'v> VaultHome<'v> {
         let loc = self.resolve_problem_dir(plat, problem_id);
         let problem_meta = fsutil::read_json_with_deserialize(loc.metadata_file())?;
         Ok((loc, problem_meta))
+    }
+
+    #[must_use]
+    pub fn save_submittable_lang_list(
+        &self,
+        plat: Platform,
+        langs: &[PgLang],
+    ) -> Result<PlatformVault> {
+        let vault = self.resolve_platform_dir(plat);
+        fsutil::write_json_with_mkdir(vault.submittable_langs_file(), &langs)?;
+        Ok(vault)
+    }
+
+    #[must_use]
+    pub fn load_submittable_lang_list(
+        &self,
+        plat: Platform,
+    ) -> Result<(PlatformVault, Vec<PgLang>)> {
+        let vault = self.resolve_platform_dir(plat);
+        let langs: Vec<PgLang> =
+            fsutil::read_json_with_deserialize(vault.submittable_langs_file())?;
+        Ok((vault, langs))
     }
 }
