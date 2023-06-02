@@ -115,7 +115,7 @@ impl FsTestcase {
 
     pub fn enumerate(
         dir: impl AsRef<Path>,
-        finder: impl FsTestcaseFinder,
+        finder: &impl FsTestcaseFinder,
     ) -> fsutil::Result<Vec<Self>> {
         let mut res = Vec::new();
         for entry in fsutil::read_dir(&dir)?.filter_map(Result::ok) {

@@ -55,6 +55,7 @@ impl TestRunner {
         Ok(self)
     }
 
+    #[must_use]
     pub fn interpolate_command_with_program_file(
         filepath: impl AsRef<Path>,
         mut cmd: TestCommand,
@@ -100,11 +101,14 @@ impl TestRunner {
         self.execution_time_limit
     }
 
+    pub fn is_compile_cmd_defined(&self) -> bool {
+        self.cmd.compile.is_some()
+    }
+
     pub async fn compile(&self) -> anyhow::Result<()> {
         let Some(cmd) = &self.cmd.compile else {
             bail!("Undefined compile command")
         };
-        println!("{}", cmd);
 
         let status = Command::new(&self.shell)
             .args(["-c", &cmd])
