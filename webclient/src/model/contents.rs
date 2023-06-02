@@ -39,7 +39,7 @@ pub struct Testcase {
 }
 
 /// Submission language candidate
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct PgLang {
     /// e.g. "C++ (GCC 9.2.1)"
     pub name: String,
