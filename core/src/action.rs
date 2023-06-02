@@ -9,13 +9,13 @@ use std::time::Duration;
 use chrono::{DateTime, Local};
 use error::*;
 use kpr_webclient::problem_id::ProblemGlobalId;
-use kpr_webclient::{ProblemMeta, Testcase, Url};
+use kpr_webclient::{PgLang, ProblemMeta, Testcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::config::TestConfig;
 use crate::interactive::ask_credential;
 use crate::storage::{
-    workspace, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
+    workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
 };
 use crate::testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner};
 
@@ -92,6 +92,34 @@ pub async fn ensure_problem_data_saved(
     self::fetch_and_save_problem_data(cli, url, repo)
         .await
         .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
+}
+
+pub async fn fetch_and_save_submittable_lang_list(
+    cli: &SessionPersistentClient,
+    repo: &Repository,
+) -> Result<(PlatformVault, Vec<PgLang>)> {
+    let langs = cli
+        .fetch_submittable_language_list()
+        .await
+        .context("Failed to fetch submittable language list")?;
+
+    let vault = repo.vault_home();
+    let saved_location = vault
+        .save_submittable_lang_list(cli.platform(), &langs)
+        .context("Failed to save submittable language list")?;
+
+    Ok((saved_location, langs))
+}
+
+pub async fn ensure_submittable_lang_list_saved(
+    cli: &SessionPersistentClient,
+    repo: &Repository,
+) -> Result<(PlatformVault, Vec<PgLang>)> {
+    let vault = repo.vault_home();
+    if let Ok((loc, langs)) = vault.load_submittable_lang_list(cli.platform()) {
+        return Ok((loc, langs));
+    }
+    self::fetch_and_save_submittable_lang_list(cli, repo).await
 }
 
 pub async fn create_shojin_workspace(

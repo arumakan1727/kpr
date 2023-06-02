@@ -1,6 +1,7 @@
 pub mod contest;
 pub mod fetch;
 pub mod init;
+pub mod langs;
 pub mod login;
 pub mod logout;
 pub mod shojin;
@@ -26,6 +27,7 @@ pub enum Subcommand {
     Fetch(fetch::Args),
     Shojin(shojin::Args),
     Contest(contest::Args),
+    Langs(langs::Args),
 
     #[command(alias("t"))]
     Test(test::Args),
@@ -43,6 +45,7 @@ impl GlobalArgs {
             Fetch(args) => fetch::exec(args, self).await,
             Shojin(args) => shojin::exec(args, self).await,
             Contest(args) => contest::exec(args, self).await,
+            Langs(args) => langs::exec(args, self).await,
             Test(args) => test::exec(args, self).await,
         }
     }
