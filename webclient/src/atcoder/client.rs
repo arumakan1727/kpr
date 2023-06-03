@@ -75,7 +75,7 @@ fn extract_testcase(pre: ElementRef) -> String {
     s
 }
 
-fn scrape_testcases(doc: &Html) -> Result<Vec<Testcase>> {
+fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
     let sel_parts_modern_ver = Selector::parse("#task-statement .lang-ja > .part").unwrap();
     let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
     let sel_h3 = Selector::parse("h3").unwrap();
@@ -102,10 +102,10 @@ fn scrape_testcases(doc: &Html) -> Result<Vec<Testcase>> {
         .into_iter()
         .zip(out_cases)
         .enumerate()
-        .map(|(i, (input, expected))| Testcase {
+        .map(|(i, (input, output))| SampleTestcase {
             ord: (i + 1) as u32,
             input,
-            expected,
+            output,
         })
         .collect();
     Ok(cases)
@@ -246,7 +246,7 @@ impl Client for AtCoderClient {
     async fn fetch_problem_detail(
         &self,
         problem_url: &Url,
-    ) -> Result<(ProblemMeta, Vec<Testcase>)> {
+    ) -> Result<(ProblemMeta, Vec<SampleTestcase>)> {
         let html = self
             .http
             .get(problem_url.clone())
