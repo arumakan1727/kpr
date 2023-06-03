@@ -33,14 +33,14 @@ impl ProblemVault {
     /// Returns tuple (input_filename, output_filename).
     ///
     /// ```
-    /// use kpr_core::repository::Vault;
+    /// use kpr_core::storage::ProblemVault;
     ///
-    /// let (infile, outfile) = Vault::testcase_filename(1);
-    /// assert_eq!(infile, "in1.txt");
-    /// assert_eq!(outfile, "out1.txt");
+    /// let (infile, outfile) = ProblemVault::testcase_filename("sample1");
+    /// assert_eq!(infile, "in_sample1.txt");
+    /// assert_eq!(outfile, "out_sample1.txt");
     /// ```
-    pub fn testcase_filename(ord: u32) -> (String, String) {
-        (format!("in{}.txt", ord), format!("out{}.txt", ord))
+    pub fn testcase_filename(name: &str) -> (String, String) {
+        (format!("in_{}.txt", name), format!("out_{}.txt", name))
     }
 
     pub fn dir(&self) -> &Path {
@@ -92,7 +92,7 @@ impl<'v> VaultHome<'v> {
     pub fn save_problem_data<'a>(
         &self,
         meta: &ProblemMeta,
-        ts: impl IntoIterator<Item = &'a SampleTestcase>,
+        sample_testcases: impl IntoIterator<Item = &'a SampleTestcase>,
     ) -> Result<ProblemVault> {
         let loc = self.resolve_problem_dir(meta.platform, &meta.problem_id);
 
@@ -100,12 +100,27 @@ impl<'v> VaultHome<'v> {
 
         let testcase_dir = loc.testcase_dir();
         fsutil::mkdir_all(&testcase_dir)?;
-        for t in ts {
-            let (infile, outfile) = ProblemVault::testcase_filename(t.ord);
-            fsutil::write(testcase_dir.join(infile), &t.input)?;
-            fsutil::write(testcase_dir.join(outfile), &t.expected)?;
+
+        for t in sample_testcases {
+            let name = format!("sample{}", t.ord);
+            self.save_testcase(&loc, &name, &t.input, &t.output)?;
         }
         Ok(loc)
+    }
+
+    #[must_use]
+    pub fn save_testcase(
+        &self,
+        location: &ProblemVault,
+        name: &str,
+        input: impl AsRef<[u8]>,
+        output: impl AsRef<[u8]>,
+    ) -> Result<()> {
+        let dir = location.testcase_dir();
+        let (infile, outfile) = ProblemVault::testcase_filename(name);
+        fsutil::write(dir.join(infile), input)?;
+        fsutil::write(dir.join(outfile), output)?;
+        Ok(())
     }
 
     #[must_use]
