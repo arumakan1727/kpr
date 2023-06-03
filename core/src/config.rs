@@ -15,22 +15,23 @@ pub fn authtoken_filename(platform: Platform) -> String {
     format!("{}-auth.json", platform.lowercase())
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Config {
     #[serde(skip)]
     pub source_config_file: Option<PathBuf>,
     pub repository: RepoConfig,
     pub test: TestConfig,
+    pub submit: SubmissionConfig,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RepoConfig {
     pub vault_home: PathBuf,
     pub workspace_home: PathBuf,
     pub workspace_template: PathBuf,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct TestConfig {
     pub shell: PathBuf,
     pub include: GlobPattern,
@@ -41,10 +42,7 @@ pub struct TestConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct TestCommandConfig {
     pub pattern: GlobPattern,
-
-    #[serde(default = "Option::default")]
     pub compile: Option<String>,
-
     pub run: String,
 }
 
@@ -147,6 +145,6 @@ mod test {
         assert_eq!(test.shell, Path::new("/bin/sh"));
         assert_eq!(test.include, GlobPattern::parse("[mM]ain.*").unwrap());
         assert_eq!(test.compile_before_run, true);
-        assert_eq!(test.command.len(), 2);
+        assert_eq!(test.command.len(), 3);
     }
 }

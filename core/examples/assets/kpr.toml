@@ -1,24 +1,36 @@
 [repository]
 # Directory path for vault
-vault_home = "./vault"
+vault_home = './vault'
 
 # Directory path for daily workspace
-workspace_home = "./workspace"
+workspace_home = './workspace'
 
 # Directory path for workspace template.
 # Files in this dir will be copied each time for a problem workspace is created.
-workspace_template = "./template"
+workspace_template = './template'
 
 [test]
-shell = "/bin/sh"
-include = "[mM]ain.*"
+shell = '/bin/sh'
+include = '[mM]ain.*'
 compile_before_run = true
 
 [[test.command]]
-pattern = "*.cpp"
-compile = "g++ #{fileName} -o #{fileStem} -Wall -Wextra -fsanitize=address,undefined -g -fno-omit-frame-pointer"
-run = "./#{fileStem}"
+pattern = '*.cpp'
+compile = """\
+  g++ \
+  #{fileName} \
+  -o #{fileStem} \
+  -Wall -Wextra \
+  -g \
+  -fsanitize=address,undefined \
+  -fno-omit-frame-pointer \
+"""
+run = './#{fileStem}'
 
 [[test.command]]
-pattern = "*.py"
-run = "python3 #{fileName}"
+pattern = '*.cpython.py'
+run = 'python3 #{fileName}'
+
+[[test.command]]
+pattern = '*.pypy.py'
+run = 'pypy3 #{fileName}'
