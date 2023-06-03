@@ -32,7 +32,7 @@ pub struct ProblemMeta {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct Testcase {
+pub struct SampleTestcase {
     pub ord: u32,
     pub input: String,
     pub expected: String,

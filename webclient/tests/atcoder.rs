@@ -247,22 +247,22 @@ async fn fetch_abc003_4_detail() {
     assert_eq!(
         testcases,
         vec![
-            Testcase {
+            SampleTestcase {
                 ord: 1,
                 input: ["3 2", "2 2", "2 2\n"].join("\n"),
                 expected: "12\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 2,
                 input: ["4 5", "3 1", "3 0\n"].join("\n"),
                 expected: "10\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 3,
                 input: ["23 18", "15 13", "100 95\n"].join("\n"),
                 expected: "364527243\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 4,
                 input: ["30 30", "24 22", "145 132\n"].join("\n"),
                 expected: "976668549\n".to_owned(),
@@ -295,12 +295,12 @@ async fn fetch_abc086_a_detail() {
     assert_eq!(
         testcases,
         vec![
-            Testcase {
+            SampleTestcase {
                 ord: 1,
                 input: "3 4\n".to_owned(),
                 expected: "Even\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 2,
                 input: "1 21\n".to_owned(),
                 expected: "Odd\n".to_owned(),
@@ -333,7 +333,7 @@ async fn fetch_typical90_az_detail() {
     assert_eq!(
         testcases,
         vec![
-            Testcase {
+            SampleTestcase {
                 ord: 1,
                 input: "\
 2
@@ -342,7 +342,7 @@ async fn fetch_typical90_az_detail() {
                     .to_owned(),
                 expected: "1421\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 2,
                 input: "\
 1
@@ -350,7 +350,7 @@ async fn fetch_typical90_az_detail() {
                     .to_owned(),
                 expected: "112\n".to_owned(),
             },
-            Testcase {
+            SampleTestcase {
                 ord: 3,
                 input: "\
 7

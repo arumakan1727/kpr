@@ -9,7 +9,7 @@ use std::time::Duration;
 use chrono::{DateTime, Local};
 use error::*;
 use kpr_webclient::problem_id::ProblemGlobalId;
-use kpr_webclient::{PgLang, ProblemMeta, Testcase, Url};
+use kpr_webclient::{PgLang, ProblemMeta, SampleTestcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::config::TestConfig;
@@ -58,7 +58,7 @@ pub async fn fetch_and_save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVault, ProblemMeta, Vec<Testcase>)> {
+) -> Result<(ProblemVault, ProblemMeta, Vec<SampleTestcase>)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let (problem_meta, testcases) = cli

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use kpr_webclient::{PgLang, Platform, ProblemId, ProblemMeta, Testcase};
+use kpr_webclient::{PgLang, Platform, ProblemId, ProblemMeta, SampleTestcase};
 
 use super::error::Result;
 use crate::fsutil;
@@ -92,7 +92,7 @@ impl<'v> VaultHome<'v> {
     pub fn save_problem_data<'a>(
         &self,
         meta: &ProblemMeta,
-        ts: impl IntoIterator<Item = &'a Testcase>,
+        ts: impl IntoIterator<Item = &'a SampleTestcase>,
     ) -> Result<ProblemVault> {
         let loc = self.resolve_problem_dir(meta.platform, &meta.problem_id);
 
