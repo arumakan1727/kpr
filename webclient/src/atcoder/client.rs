@@ -102,10 +102,10 @@ fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
         .into_iter()
         .zip(out_cases)
         .enumerate()
-        .map(|(i, (input, expected))| SampleTestcase {
+        .map(|(i, (input, output))| SampleTestcase {
             ord: (i + 1) as u32,
             input,
-            expected,
+            output,
         })
         .collect();
     Ok(cases)

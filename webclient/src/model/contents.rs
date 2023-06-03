@@ -35,7 +35,7 @@ pub struct ProblemMeta {
 pub struct SampleTestcase {
     pub ord: u32,
     pub input: String,
-    pub expected: String,
+    pub output: String,
 }
 
 /// Submission language candidate
