@@ -46,6 +46,22 @@ pub struct TestCommandConfig {
     pub run: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionConfig {
+    pub lang: SubmissionLangConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionLangConfig {
+    pub atcoder: Vec<SubmissionLangConfigEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionLangConfigEntry {
+    pub pattern: GlobPattern,
+    pub lang: String,
+}
+
 #[derive(RustEmbed)]
 #[folder = "examples/assets/"]
 struct Asset;
@@ -135,6 +151,7 @@ mod test {
             source_config_file,
             repository: repo,
             test,
+            submit,
         } = cfg;
 
         assert_eq!(source_config_file, None);
@@ -146,5 +163,14 @@ mod test {
         assert_eq!(test.include, GlobPattern::parse("[mM]ain.*").unwrap());
         assert_eq!(test.compile_before_run, true);
         assert_eq!(test.command.len(), 3);
+
+        assert_eq!(submit.lang.atcoder.len(), 3);
+        assert_eq!(
+            submit.lang.atcoder[0],
+            SubmissionLangConfigEntry {
+                pattern: GlobPattern::parse("*.cpp").unwrap(),
+                lang: "C++ (GCC 9.2.1)".to_owned(),
+            }
+        );
     }
 }

@@ -34,3 +34,13 @@ run = 'python3 #{fileName}'
 [[test.command]]
 pattern = '*.pypy.py'
 run = 'pypy3 #{fileName}'
+
+# Submission prgramming languages.
+# Available lang name can be found by executing
+#   `kpr langs atcoder`
+[submit.lang]
+atcoder = [
+  { pattern = '*.cpp', lang = 'C++ (GCC 9.2.1)' },
+  { pattern = '*.cpython.py', lang = 'Python (3.8.2)' },
+  { pattern = '*.pypy.py', lang = 'PyPy3 (7.3.0)' },
+]
