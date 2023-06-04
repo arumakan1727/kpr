@@ -183,14 +183,7 @@ pub async fn create_contest_workspace(
         // Avoid Dos attack
         std::thread::sleep(Duration::from_millis(200));
 
-        let url = Url::parse(&problem.url).with_context(|| {
-            format!(
-                "Failed to get correct problem url (contest_url={})",
-                contest_url
-            )
-        })?;
-
-        let (vault_loc, _info) = self::ensure_problem_data_saved(cli, &url, repo).await?;
+        let (vault_loc, _info) = self::ensure_problem_data_saved(cli, &problem.url, repo).await?;
         let loc = w
             .create_workspace(
                 &vault_loc,

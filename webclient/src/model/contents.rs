@@ -6,7 +6,7 @@ use super::problem_id::ProblemId;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ContestInfo {
-    pub url: String,
+    pub url: Url,
     pub short_title: String,
     pub long_title: String,
     pub problems: Vec<ContestProblemOutline>,
@@ -16,7 +16,7 @@ pub struct ContestInfo {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ContestProblemOutline {
-    pub url: String,
+    pub url: Url,
     pub ord: u32,
     pub title: String,
 }
@@ -24,7 +24,7 @@ pub struct ContestProblemOutline {
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct ProblemInfo {
     pub platform: Platform,
-    pub url: String,
+    pub url: Url,
     pub problem_id: ProblemId,
     pub title: String,
     pub execution_time_limit: Duration,

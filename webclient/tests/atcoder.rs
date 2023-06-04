@@ -178,12 +178,9 @@ async fn fetch_abc001_info() {
     // Avoid Dos attack
     sleep_random_ms();
 
-    let url = "https://atcoder.jp/contests/abc001";
+    let url = Url::parse("https://atcoder.jp/contests/abc001").unwrap();
     let cli = AtCoderClient::new();
-    let info = cli
-        .fetch_contest_info(&Url::parse(&url).unwrap())
-        .await
-        .unwrap();
+    let info = cli.fetch_contest_info(&url).await.unwrap();
 
     assert_eq!(info.url, url);
     assert_eq!(info.short_title, "abc001");
@@ -200,22 +197,22 @@ async fn fetch_abc001_info() {
         info.problems,
         vec![
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_1".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
                 ord: 1,
                 title: "積雪深差".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_2".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_2").unwrap(),
                 ord: 2,
                 title: "視程の通報".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_3".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_3").unwrap(),
                 ord: 3,
                 title: "風力観測".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_4".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_4").unwrap(),
                 ord: 4,
                 title: "感雨時刻の整理".to_owned(),
             },
@@ -237,7 +234,7 @@ async fn fetch_abc003_4_detail() {
         problem_info,
         ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "AtCoder社の冬".to_owned(),
             execution_time_limit: Duration::from_secs(2),
@@ -285,7 +282,7 @@ async fn fetch_abc086_a_detail() {
         problem_info,
         ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "Product".to_owned(),
             execution_time_limit: Duration::from_secs(2),
@@ -323,7 +320,7 @@ async fn fetch_typical90_az_detail() {
         problem_info,
         ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "Dice Product（★3）".to_owned(),
             execution_time_limit: Duration::from_secs(2),

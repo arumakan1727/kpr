@@ -223,7 +223,7 @@ impl Client for AtCoderClient {
                 .map(|(i, node)| {
                     let title_el = node.select(&sel_title).next().unwrap();
                     let url_path = title_el.value().attr("href").unwrap();
-                    let url = util::complete_url(url_path, DOMAIN);
+                    let url = Url::parse(&util::complete_url(url_path, DOMAIN)).unwrap();
                     ContestProblemOutline {
                         url,
                         ord: (i + 1) as u32,
@@ -234,7 +234,7 @@ impl Client for AtCoderClient {
         };
 
         Ok(ContestInfo {
-            url: contest_url.to_string(),
+            url: contest_url.to_owned(),
             short_title,
             long_title,
             problems,
@@ -288,7 +288,7 @@ impl Client for AtCoderClient {
         let testcases = scrape_testcases(&doc)?;
         let info = ProblemInfo {
             platform: self.platform(),
-            url: problem_url.to_string(),
+            url: problem_url.to_owned(),
             problem_id,
             title,
             execution_time_limit,
