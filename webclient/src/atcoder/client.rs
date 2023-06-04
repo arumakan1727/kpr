@@ -246,7 +246,7 @@ impl Client for AtCoderClient {
     async fn fetch_problem_detail(
         &self,
         problem_url: &Url,
-    ) -> Result<(ProblemMeta, Vec<SampleTestcase>)> {
+    ) -> Result<(ProblemInfo, Vec<SampleTestcase>)> {
         let html = self
             .http
             .get(problem_url.clone())
@@ -286,7 +286,7 @@ impl Client for AtCoderClient {
         };
         let problem_id = unsafe { self.extract_problem_id(problem_url).unwrap_unchecked() };
         let testcases = scrape_testcases(&doc)?;
-        let meta = ProblemMeta {
+        let info = ProblemInfo {
             platform: self.platform(),
             url: problem_url.to_string(),
             problem_id,
@@ -294,7 +294,7 @@ impl Client for AtCoderClient {
             execution_time_limit,
             memory_limit_kb,
         };
-        Ok((meta, testcases))
+        Ok((info, testcases))
     }
 
     fn credential_fields(&self) -> &'static [CredFieldMeta] {

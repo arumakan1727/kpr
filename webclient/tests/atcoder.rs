@@ -231,11 +231,11 @@ async fn fetch_abc003_4_detail() {
     let url_str = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
             problem_id: ProblemId::try_from(&url).unwrap(),
@@ -279,11 +279,11 @@ async fn fetch_abc086_a_detail() {
     let url_str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
             problem_id: ProblemId::try_from(&url).unwrap(),
@@ -317,11 +317,11 @@ async fn fetch_typical90_az_detail() {
     let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_az/";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
             url: url_str.to_owned(),
             problem_id: ProblemId::try_from(&url).unwrap(),

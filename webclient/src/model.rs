@@ -33,7 +33,7 @@ pub trait Client {
     async fn fetch_problem_detail(
         &self,
         problem_url: &Url,
-    ) -> Result<(ProblemMeta, Vec<SampleTestcase>)>;
+    ) -> Result<(ProblemInfo, Vec<SampleTestcase>)>;
 
     fn credential_fields(&self) -> &'static [CredFieldMeta];
 

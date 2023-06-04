@@ -9,7 +9,7 @@ use std::time::Duration;
 use chrono::{DateTime, Local};
 use error::*;
 use kpr_webclient::problem_id::ProblemGlobalId;
-use kpr_webclient::{PgLang, ProblemMeta, SampleTestcase, Url};
+use kpr_webclient::{PgLang, ProblemInfo, SampleTestcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::config::{SubmissionConfig, TestConfig};
@@ -59,10 +59,10 @@ pub async fn fetch_and_save_problem_data(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVault, ProblemMeta, Vec<SampleTestcase>)> {
+) -> Result<(ProblemVault, ProblemInfo, Vec<SampleTestcase>)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
-    let (problem_meta, testcases) = cli
+    let (problem_info, testcases) = cli
         .fetch_problem_detail(url)
         .await
         .context("Failed to fetch testcase")?;
@@ -70,29 +70,29 @@ pub async fn fetch_and_save_problem_data(
     let vault = repo.vault_home();
 
     let saved_location = vault
-        .save_problem_data(&problem_meta, &testcases)
+        .save_problem_data(&problem_info, &testcases)
         .context("Failed to save problem data")?;
 
-    Ok((saved_location, problem_meta, testcases))
+    Ok((saved_location, problem_info, testcases))
 }
 
 pub async fn ensure_problem_data_saved(
     cli: &SessionPersistentClient,
     url: &Url,
     repo: &Repository,
-) -> Result<(ProblemVault, ProblemMeta)> {
+) -> Result<(ProblemVault, ProblemInfo)> {
     ensure!(cli.is_problem_url(url), "Not a problem url: {}", url);
 
     let platform = cli.platform();
     let problem_id = cli.extract_problem_id(url).unwrap();
     let vault = repo.vault_home();
 
-    if let Ok((loc, problem_meta)) = vault.load_problem_metadata(platform, &problem_id) {
-        return Ok((loc, problem_meta));
+    if let Ok((loc, problem_info)) = vault.load_problem_info(platform, &problem_id) {
+        return Ok((loc, problem_info));
     }
     self::fetch_and_save_problem_data(cli, url, repo)
         .await
-        .map(|(dir, problem_meta, _testcases)| (dir, problem_meta))
+        .map(|(dir, problem_info, _testcases)| (dir, problem_info))
 }
 
 pub async fn fetch_and_save_submittable_lang_list(
@@ -135,9 +135,9 @@ pub async fn create_shojin_workspace(
         problem_url
     );
 
-    let (saved_location, meta) = self::ensure_problem_data_saved(cli, &problem_url, repo).await?;
+    let (saved_location, info) = self::ensure_problem_data_saved(cli, &problem_url, repo).await?;
 
-    let problem_id = ProblemGlobalId::new(meta.platform, meta.problem_id);
+    let problem_id = ProblemGlobalId::new(info.platform, info.problem_id);
     let loc = repo
         .workspace_home()
         .create_workspace(
@@ -190,7 +190,7 @@ pub async fn create_contest_workspace(
             )
         })?;
 
-        let (vault_loc, _meta) = self::ensure_problem_data_saved(cli, &url, repo).await?;
+        let (vault_loc, _info) = self::ensure_problem_data_saved(cli, &url, repo).await?;
         let loc = w
             .create_workspace(
                 &vault_loc,

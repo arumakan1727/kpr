@@ -266,7 +266,7 @@ pub fn find_most_recently_modified_file(
 
     for entry in self::read_dir(&dir)?.filter_map(std::result::Result::ok) {
         let file_type = entry.file_type();
-        let modified = entry.metadata().and_then(|meta| meta.modified());
+        let modified = entry.metadata().and_then(|info| info.modified());
         let (Ok(file_type), Ok(modified)) =  (file_type, modified) else {
                 continue
             };

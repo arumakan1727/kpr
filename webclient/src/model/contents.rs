@@ -22,7 +22,7 @@ pub struct ContestProblemOutline {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct ProblemMeta {
+pub struct ProblemInfo {
     pub platform: Platform,
     pub url: String,
     pub problem_id: ProblemId,
