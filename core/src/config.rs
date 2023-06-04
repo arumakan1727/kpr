@@ -15,22 +15,23 @@ pub fn authtoken_filename(platform: Platform) -> String {
     format!("{}-auth.json", platform.lowercase())
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Config {
     #[serde(skip)]
     pub source_config_file: Option<PathBuf>,
     pub repository: RepoConfig,
     pub test: TestConfig,
+    pub submit: SubmissionConfig,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RepoConfig {
     pub vault_home: PathBuf,
     pub workspace_home: PathBuf,
     pub workspace_template: PathBuf,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct TestConfig {
     pub shell: PathBuf,
     pub include: GlobPattern,
@@ -41,11 +42,25 @@ pub struct TestConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct TestCommandConfig {
     pub pattern: GlobPattern,
-
-    #[serde(default = "Option::default")]
     pub compile: Option<String>,
-
     pub run: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionConfig {
+    pub run_test: bool,
+    pub lang: SubmissionLangConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionLangConfig {
+    pub atcoder: Vec<SubmissionLangConfigEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SubmissionLangConfigEntry {
+    pub pattern: GlobPattern,
+    pub lang: String,
 }
 
 #[derive(RustEmbed)]
@@ -124,6 +139,27 @@ impl<'a> FromIterator<&'a TestCommandConfig> for GlobMap<TestCommand> {
     }
 }
 
+impl SubmissionLangConfig {
+    pub fn get(&self, platform: Platform) -> &[SubmissionLangConfigEntry] {
+        use Platform::*;
+        match platform {
+            AtCoder => &self.atcoder,
+        }
+    }
+
+    pub fn find_submission_lang_for_filename(
+        &self,
+        filename: impl AsRef<str>,
+        platform: Platform,
+    ) -> Option<&str> {
+        let filename = filename.as_ref();
+        self.get(platform)
+            .iter()
+            .find(|entry| entry.pattern.matches(filename))
+            .map(|entry| entry.lang.as_str())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -137,6 +173,7 @@ mod test {
             source_config_file,
             repository: repo,
             test,
+            submit,
         } = cfg;
 
         assert_eq!(source_config_file, None);
@@ -147,6 +184,16 @@ mod test {
         assert_eq!(test.shell, Path::new("/bin/sh"));
         assert_eq!(test.include, GlobPattern::parse("[mM]ain.*").unwrap());
         assert_eq!(test.compile_before_run, true);
-        assert_eq!(test.command.len(), 2);
+        assert_eq!(test.command.len(), 3);
+
+        assert_eq!(submit.run_test, true);
+        assert_eq!(submit.lang.atcoder.len(), 3);
+        assert_eq!(
+            submit.lang.atcoder[0],
+            SubmissionLangConfigEntry {
+                pattern: GlobPattern::parse("*.cpp").unwrap(),
+                lang: "C++ (GCC 9.2.1)".to_owned(),
+            }
+        );
     }
 }

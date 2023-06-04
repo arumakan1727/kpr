@@ -223,7 +223,7 @@ impl Client for AtCoderClient {
                 .map(|(i, node)| {
                     let title_el = node.select(&sel_title).next().unwrap();
                     let url_path = title_el.value().attr("href").unwrap();
-                    let url = util::complete_url(url_path, DOMAIN);
+                    let url = Url::parse(&util::complete_url(url_path, DOMAIN)).unwrap();
                     ContestProblemOutline {
                         url,
                         ord: (i + 1) as u32,
@@ -234,7 +234,7 @@ impl Client for AtCoderClient {
         };
 
         Ok(ContestInfo {
-            url: contest_url.to_string(),
+            url: contest_url.to_owned(),
             short_title,
             long_title,
             problems,
@@ -246,7 +246,7 @@ impl Client for AtCoderClient {
     async fn fetch_problem_detail(
         &self,
         problem_url: &Url,
-    ) -> Result<(ProblemMeta, Vec<SampleTestcase>)> {
+    ) -> Result<(ProblemInfo, Vec<SampleTestcase>)> {
         let html = self
             .http
             .get(problem_url.clone())
@@ -286,15 +286,15 @@ impl Client for AtCoderClient {
         };
         let problem_id = unsafe { self.extract_problem_id(problem_url).unwrap_unchecked() };
         let testcases = scrape_testcases(&doc)?;
-        let meta = ProblemMeta {
+        let info = ProblemInfo {
             platform: self.platform(),
-            url: problem_url.to_string(),
+            url: problem_url.to_owned(),
             problem_id,
             title,
             execution_time_limit,
             memory_limit_kb,
         };
-        Ok((meta, testcases))
+        Ok((info, testcases))
     }
 
     fn credential_fields(&self) -> &'static [CredFieldMeta] {
@@ -402,7 +402,7 @@ impl Client for AtCoderClient {
         Ok(langs)
     }
 
-    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
+    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<Url> {
         ensure!(
             self.get_auth().session_id.is_some(),
             Error::NeedLogin {
@@ -441,7 +441,9 @@ impl Client for AtCoderClient {
         let location = util::extract_302_location_header(&resp, submit_url)?;
         let submissions_path = format!("/contests/{}/submissions/me", contest_name);
         match location.as_str() {
-            path if path == submissions_path => Ok(()),
+            path if path == submissions_path => {
+                Ok(Url::parse(&util::complete_url(path, DOMAIN)).unwrap())
+            }
             path if path.starts_with("/login") => Err(Error::NeedLogin {
                 requested_url: problem_url.to_string(),
             }),

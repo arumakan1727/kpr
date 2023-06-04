@@ -90,3 +90,15 @@ impl Repository {
         Ok(())
     }
 }
+
+impl From<&Config> for Repository {
+    fn from(c: &Config) -> Self {
+        let config_dir = c
+            .source_config_file
+            .as_ref()
+            .unwrap()
+            .parent()
+            .unwrap_or(Path::new("."));
+        Self::new(&config_dir, c.repository.clone())
+    }
+}

@@ -178,12 +178,9 @@ async fn fetch_abc001_info() {
     // Avoid Dos attack
     sleep_random_ms();
 
-    let url = "https://atcoder.jp/contests/abc001";
+    let url = Url::parse("https://atcoder.jp/contests/abc001").unwrap();
     let cli = AtCoderClient::new();
-    let info = cli
-        .fetch_contest_info(&Url::parse(&url).unwrap())
-        .await
-        .unwrap();
+    let info = cli.fetch_contest_info(&url).await.unwrap();
 
     assert_eq!(info.url, url);
     assert_eq!(info.short_title, "abc001");
@@ -200,22 +197,22 @@ async fn fetch_abc001_info() {
         info.problems,
         vec![
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_1".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
                 ord: 1,
                 title: "積雪深差".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_2".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_2").unwrap(),
                 ord: 2,
                 title: "視程の通報".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_3".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_3").unwrap(),
                 ord: 3,
                 title: "風力観測".to_owned(),
             },
             ContestProblemOutline {
-                url: "https://atcoder.jp/contests/abc001/tasks/abc001_4".to_owned(),
+                url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_4").unwrap(),
                 ord: 4,
                 title: "感雨時刻の整理".to_owned(),
             },
@@ -231,13 +228,13 @@ async fn fetch_abc003_4_detail() {
     let url_str = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "AtCoder社の冬".to_owned(),
             execution_time_limit: Duration::from_secs(2),
@@ -279,13 +276,13 @@ async fn fetch_abc086_a_detail() {
     let url_str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "Product".to_owned(),
             execution_time_limit: Duration::from_secs(2),
@@ -317,13 +314,13 @@ async fn fetch_typical90_az_detail() {
     let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_az/";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
-    let (problem_meta, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
 
     assert_eq!(
-        problem_meta,
-        ProblemMeta {
+        problem_info,
+        ProblemInfo {
             platform: Platform::AtCoder,
-            url: url_str.to_owned(),
+            url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
             title: "Dice Product（★3）".to_owned(),
             execution_time_limit: Duration::from_secs(2),
@@ -386,14 +383,14 @@ fn serialize_null_auth_data() {
 
 static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006"));
 
-const URL_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+const URL_ABS_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
 
-async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
+async fn submit_abc086_a(cli: &AtCoderClient) -> Result<Url> {
     // Avoid Dos attack
     sleep_random_ms();
 
     cli.submit(
-        &Url::parse(URL_ABC086_A).unwrap(),
+        &Url::parse(URL_ABS_ABC086_A).unwrap(),
         &PYTHON,
         [
             "a, b = map(int, input().split())",
@@ -457,9 +454,11 @@ async fn senario_login_submit_logout() {
     let mut cli2 = AtCoderClient::new();
     cli2.load_authtoken_json(&auth_json).unwrap();
 
-    submit_abc086_a(&cli2)
-        .await
-        .unwrap_or_else(|e| panic!("{:?}", e));
+    let submission_status_url = dbg!(submit_abc086_a(&cli2).await).unwrap();
+    assert_eq!(
+        submission_status_url,
+        Url::parse("https://atcoder.jp/contests/abs/submissions/me").unwrap()
+    );
 
     cli2.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 
@@ -506,7 +505,7 @@ async fn submit_without_logined_should_be_fail() {
     let err = submit_abc086_a(&cli).await.err().unwrap();
     match err {
         Error::NeedLogin { requested_url } => {
-            assert_eq!(requested_url, URL_ABC086_A);
+            assert_eq!(requested_url, URL_ABS_ABC086_A);
         }
         _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
     }

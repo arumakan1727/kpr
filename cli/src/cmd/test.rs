@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context};
-use kpr_core::{action, config::Config, fsutil, storage::ProblemWorkspace};
+use kpr_core::{action, config::Config, storage::ProblemWorkspace};
 
 use crate::util;
 
@@ -19,22 +18,8 @@ pub struct Args {
 pub async fn exec(args: &Args, _global_args: &GlobalArgs) -> SubcmdResult {
     let cfg = Config::from_file_finding_in_ancestors(util::current_dir())?;
 
-    let program_file = {
-        let existing_path = match &args.program_file_or_workspace_dir {
-            Some(path) if path.exists() => path,
-            Some(path) => bail!("No such file or dir: {:?}", path),
-            None => Path::new("./"),
-        };
-
-        if existing_path.is_dir() {
-            fsutil::find_most_recently_modified_file(&existing_path, &cfg.test.include)
-                .with_context(|| {
-                    format!("Cannot find target program file in {:?}", existing_path)
-                })?
-        } else {
-            existing_path.into()
-        }
-    };
+    let program_file =
+        util::determine_program_file(&args.program_file_or_workspace_dir, &cfg.test.include)?;
 
     let testcase_dir = args
         .testcase_dir

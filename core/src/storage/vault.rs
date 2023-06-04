@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use kpr_webclient::{PgLang, Platform, ProblemId, ProblemMeta, SampleTestcase};
+use kpr_webclient::{PgLang, Platform, ProblemId, ProblemInfo, SampleTestcase};
 
 use super::error::Result;
 use crate::fsutil;
@@ -22,7 +22,7 @@ pub struct PlatformVault {
 
 impl ProblemVault {
     const TESTCASE_DIR_NAME: &str = "testcase";
-    const PROBLEM_METADATA_FILENAME: &str = "problem.json";
+    const PROBLEM_INFO_FILENAME: &str = "problem.json";
 
     pub fn new(problem_vault_dir: impl Into<PathBuf>) -> Self {
         Self {
@@ -47,8 +47,8 @@ impl ProblemVault {
         &self.dir
     }
 
-    pub fn metadata_file(&self) -> PathBuf {
-        self.dir.join(Self::PROBLEM_METADATA_FILENAME)
+    pub fn problem_info_file(&self) -> PathBuf {
+        self.dir.join(Self::PROBLEM_INFO_FILENAME)
     }
 
     pub fn testcase_dir(&self) -> PathBuf {
@@ -91,12 +91,12 @@ impl<'v> VaultHome<'v> {
     #[must_use]
     pub fn save_problem_data<'a>(
         &self,
-        meta: &ProblemMeta,
+        info: &ProblemInfo,
         sample_testcases: impl IntoIterator<Item = &'a SampleTestcase>,
     ) -> Result<ProblemVault> {
-        let loc = self.resolve_problem_dir(meta.platform, &meta.problem_id);
+        let loc = self.resolve_problem_dir(info.platform, &info.problem_id);
 
-        fsutil::write_json_with_mkdir(loc.metadata_file(), meta)?;
+        fsutil::write_json_with_mkdir(loc.problem_info_file(), info)?;
 
         let testcase_dir = loc.testcase_dir();
         fsutil::mkdir_all(&testcase_dir)?;
@@ -124,14 +124,14 @@ impl<'v> VaultHome<'v> {
     }
 
     #[must_use]
-    pub fn load_problem_metadata(
+    pub fn load_problem_info(
         &self,
         plat: Platform,
         problem_id: &ProblemId,
-    ) -> Result<(ProblemVault, ProblemMeta)> {
+    ) -> Result<(ProblemVault, ProblemInfo)> {
         let loc = self.resolve_problem_dir(plat, problem_id);
-        let problem_meta = fsutil::read_json_with_deserialize(loc.metadata_file())?;
-        Ok((loc, problem_meta))
+        let problem_info = fsutil::read_json_with_deserialize(loc.problem_info_file())?;
+        Ok((loc, problem_info))
     }
 
     #[must_use]

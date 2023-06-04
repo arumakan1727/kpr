@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Local};
+use kpr_webclient::ProblemInfo;
 
 use super::{error::Result, vault::ProblemVault};
 use crate::{
@@ -26,7 +27,7 @@ pub struct WorkspaceNameModifier<'categ, 'name> {
 
 impl ProblemWorkspace {
     const TESTCASE_DIR_NAME: &str = "testcase";
-    const PROBLEM_METADATA_FILENAME: &str = ".problem.json";
+    const PROBLEM_INFO_FILE: &str = ".problem.json";
 
     pub fn new(problem_workspace_dir: impl Into<PathBuf>) -> Self {
         Self {
@@ -38,19 +39,16 @@ impl ProblemWorkspace {
         &self.dir
     }
 
-    pub fn metadata_file(&self) -> PathBuf {
-        self.dir.join(Self::PROBLEM_METADATA_FILENAME)
+    pub fn problem_info_file(&self) -> PathBuf {
+        self.dir.join(Self::PROBLEM_INFO_FILE)
     }
 
     pub fn testcase_dir(&self) -> PathBuf {
         self.dir.join(Self::TESTCASE_DIR_NAME)
     }
 
-    pub fn find_most_recently_modified_file(
-        &self,
-        filename_pattern: &::glob::Pattern,
-    ) -> Result<PathBuf> {
-        fsutil::find_most_recently_modified_file(&self.dir, filename_pattern)
+    pub fn load_problem_info(&self) -> Result<ProblemInfo> {
+        fsutil::read_json_with_deserialize(self.problem_info_file())
     }
 }
 
@@ -105,7 +103,10 @@ impl<'w> WorkspaceHome<'w> {
         name_modifier: WorkspaceNameModifier,
     ) -> Result<ProblemWorkspace> {
         let workspace = self.resolve_problem_dir(name_modifier);
-        fsutil::symlink_using_relpath_with_mkdir(vault.metadata_file(), workspace.metadata_file())?;
+        fsutil::symlink_using_relpath_with_mkdir(
+            vault.problem_info_file(),
+            workspace.problem_info_file(),
+        )?;
         fsutil::symlink_using_relpath_with_mkdir(vault.testcase_dir(), workspace.testcase_dir())?;
         fsutil::copy_contents_all(
             template_dir,
