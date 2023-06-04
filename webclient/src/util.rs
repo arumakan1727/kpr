@@ -19,7 +19,7 @@ pub fn extract_302_location_header(
     let got = resp.status();
     let expected = StatusCode::FOUND;
     if got != expected {
-        return Err(Error::UnexpectedResponseStatus {
+        return Err(Error::UnexpectedResponseCode {
             got,
             expected,
             requested_url: requested_url.into(),

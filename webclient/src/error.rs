@@ -10,8 +10,8 @@ pub enum Error {
     #[error("Need login while accessing to {requested_url}")]
     NeedLogin { requested_url: String },
 
-    #[error("Unexpected response status '{got}' (expected '{expected}') while accessing to {requested_url}")]
-    UnexpectedResponseStatus {
+    #[error("Unexpected response code '{got}' (expected '{expected}') while requesting to {requested_url}")]
+    UnexpectedResponseCode {
         got: StatusCode,
         expected: StatusCode,
         requested_url: String,
