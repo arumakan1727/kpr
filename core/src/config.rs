@@ -138,6 +138,27 @@ impl<'a> FromIterator<&'a TestCommandConfig> for GlobMap<TestCommand> {
     }
 }
 
+impl SubmissionLangConfig {
+    pub fn get(&self, platform: Platform) -> &[SubmissionLangConfigEntry] {
+        use Platform::*;
+        match platform {
+            AtCoder => &self.atcoder,
+        }
+    }
+
+    pub fn find_submission_lang_for_filename(
+        &self,
+        filename: impl AsRef<str>,
+        platform: Platform,
+    ) -> Option<&str> {
+        let filename = filename.as_ref();
+        self.get(platform)
+            .iter()
+            .find(|entry| entry.pattern.matches(filename))
+            .map(|entry| entry.lang.as_str())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -12,7 +12,8 @@ use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{PgLang, ProblemMeta, SampleTestcase, Url};
 
 use crate::client::SessionPersistentClient;
-use crate::config::TestConfig;
+use crate::config::{SubmissionConfig, TestConfig};
+use crate::fsutil;
 use crate::interactive::ask_credential;
 use crate::storage::{
     workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
@@ -225,9 +226,12 @@ pub async fn do_test(
     }
 
     let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
-    let cmd = cfg
-        .find_test_cmd_for_filename(&filename)
-        .with_context(|| format!("Undefined test command for filename '{}'", filename))?;
+    let cmd = cfg.find_test_cmd_for_filename(&filename).with_context(|| {
+        format!(
+            "Unconfigured test command for filename '{}' (No entry matched glob in `test.command[]`)",
+            filename
+        )
+    })?;
 
     let runner = TestRunner::new(cmd)
         .shell(cfg.shell.to_owned())
@@ -261,4 +265,42 @@ pub async fn do_test(
         results.push(res);
     }
     Ok(results)
+}
+
+pub async fn submit(
+    cli: &SessionPersistentClient,
+    program_file: impl AsRef<Path>,
+    problem_url: &Url,
+    cfg: &SubmissionConfig,
+    available_langs: &[PgLang],
+) -> Result<()> {
+    let platform = cli.platform();
+    let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
+
+    let lang = {
+        let lang_name = cfg
+            .lang
+            .find_submission_lang_for_filename(&filename, platform)
+            .with_context(|| format!("Unconfigured submission lang for filename '{}' (No entry mathed glob in `submit.lang.{}[]`)", filename, platform.lowercase()))?;
+
+        available_langs
+            .iter()
+            .find(|x| x.name == lang_name)
+            .with_context(|| format!("No such language named '{}'", lang_name))?
+    };
+
+    let source_code = fsutil::read_to_string(&program_file)?;
+
+    cli.submit(problem_url, &lang, &source_code)
+        .await
+        .with_context(|| {
+            format!(
+                "Failed to submit {:?} with specifying lang='{}' (langID={})",
+                program_file.as_ref(),
+                lang.name,
+                lang.id
+            )
+        })?;
+
+    Ok(())
 }
