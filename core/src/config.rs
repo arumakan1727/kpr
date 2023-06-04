@@ -48,6 +48,7 @@ pub struct TestCommandConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SubmissionConfig {
+    pub run_test: bool,
     pub lang: SubmissionLangConfig,
 }
 
@@ -185,6 +186,7 @@ mod test {
         assert_eq!(test.compile_before_run, true);
         assert_eq!(test.command.len(), 3);
 
+        assert_eq!(submit.run_test, true);
         assert_eq!(submit.lang.atcoder.len(), 3);
         assert_eq!(
             submit.lang.atcoder[0],
