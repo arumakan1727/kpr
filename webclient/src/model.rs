@@ -49,5 +49,5 @@ pub trait Client {
 
     async fn fetch_submittable_language_list(&self) -> Result<Vec<PgLang>>;
 
-    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()>;
+    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<Url>;
 }

@@ -402,7 +402,7 @@ impl Client for AtCoderClient {
         Ok(langs)
     }
 
-    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<()> {
+    async fn submit(&self, problem_url: &Url, lang: &PgLang, source_code: &str) -> Result<Url> {
         ensure!(
             self.get_auth().session_id.is_some(),
             Error::NeedLogin {
@@ -441,7 +441,9 @@ impl Client for AtCoderClient {
         let location = util::extract_302_location_header(&resp, submit_url)?;
         let submissions_path = format!("/contests/{}/submissions/me", contest_name);
         match location.as_str() {
-            path if path == submissions_path => Ok(()),
+            path if path == submissions_path => {
+                Ok(Url::parse(&util::complete_url(path, DOMAIN)).unwrap())
+            }
             path if path.starts_with("/login") => Err(Error::NeedLogin {
                 requested_url: problem_url.to_string(),
             }),

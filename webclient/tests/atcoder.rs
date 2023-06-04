@@ -383,14 +383,14 @@ fn serialize_null_auth_data() {
 
 static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006"));
 
-const URL_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
+const URL_ABS_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
 
-async fn submit_abc086_a(cli: &AtCoderClient) -> Result<()> {
+async fn submit_abc086_a(cli: &AtCoderClient) -> Result<Url> {
     // Avoid Dos attack
     sleep_random_ms();
 
     cli.submit(
-        &Url::parse(URL_ABC086_A).unwrap(),
+        &Url::parse(URL_ABS_ABC086_A).unwrap(),
         &PYTHON,
         [
             "a, b = map(int, input().split())",
@@ -454,9 +454,11 @@ async fn senario_login_submit_logout() {
     let mut cli2 = AtCoderClient::new();
     cli2.load_authtoken_json(&auth_json).unwrap();
 
-    submit_abc086_a(&cli2)
-        .await
-        .unwrap_or_else(|e| panic!("{:?}", e));
+    let submission_status_url = dbg!(submit_abc086_a(&cli2).await).unwrap();
+    assert_eq!(
+        submission_status_url,
+        Url::parse("https://atcoder.jp/contests/abs/submissions/me").unwrap()
+    );
 
     cli2.logout().await.unwrap_or_else(|e| panic!("{:?}", e));
 
@@ -503,7 +505,7 @@ async fn submit_without_logined_should_be_fail() {
     let err = submit_abc086_a(&cli).await.err().unwrap();
     match err {
         Error::NeedLogin { requested_url } => {
-            assert_eq!(requested_url, URL_ABC086_A);
+            assert_eq!(requested_url, URL_ABS_ABC086_A);
         }
         _ => panic!("Want ClientError::WrongCredential, but got {:?}", err),
     }

@@ -62,18 +62,18 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     let (_, available_langs) = ensure_submittable_lang_list_saved(&cli, &repo).await?;
 
-    let _ = action::submit(
+    let submission_status_url = action::submit(
         &cli,
         &program_file,
         &problem_url,
         &cfg.submit,
         &available_langs,
     )
-    .await;
+    .await?;
 
     println!(
-        "Successfully submitted {:?} to {}",
-        program_file, problem_url
+        "Successfully submitted {:?} to {}\nSubmission status URL:\n  {}",
+        program_file, problem_url, submission_status_url,
     );
 
     Ok(())

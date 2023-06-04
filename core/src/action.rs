@@ -266,7 +266,7 @@ pub async fn submit(
     problem_url: &Url,
     cfg: &SubmissionConfig,
     available_langs: &[PgLang],
-) -> Result<()> {
+) -> Result<Url> {
     let platform = cli.platform();
     let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
 
@@ -284,7 +284,8 @@ pub async fn submit(
 
     let source_code = fsutil::read_to_string(&program_file)?;
 
-    cli.submit(problem_url, &lang, &source_code)
+    let submission_status_url = cli
+        .submit(problem_url, &lang, &source_code)
         .await
         .with_context(|| {
             format!(
@@ -295,5 +296,5 @@ pub async fn submit(
             )
         })?;
 
-    Ok(())
+    Ok(submission_status_url)
 }
