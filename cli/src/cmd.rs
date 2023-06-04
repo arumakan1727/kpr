@@ -5,6 +5,7 @@ pub mod langs;
 pub mod login;
 pub mod logout;
 pub mod shojin;
+pub mod submit;
 pub mod test;
 
 use std::path::PathBuf;
@@ -31,6 +32,9 @@ pub enum Subcommand {
 
     #[command(alias("t"))]
     Test(test::Args),
+
+    #[command(alias("s"))]
+    Submit(submit::Args),
 }
 
 pub type SubcmdResult = anyhow::Result<()>;
@@ -47,6 +51,7 @@ impl GlobalArgs {
             Contest(args) => contest::exec(args, self).await,
             Langs(args) => langs::exec(args, self).await,
             Test(args) => test::exec(args, self).await,
+            Submit(args) => submit::exec(args, self).await,
         }
     }
 }

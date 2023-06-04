@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Local};
+use kpr_webclient::ProblemInfo;
 
 use super::{error::Result, vault::ProblemVault};
 use crate::{
@@ -44,6 +45,10 @@ impl ProblemWorkspace {
 
     pub fn testcase_dir(&self) -> PathBuf {
         self.dir.join(Self::TESTCASE_DIR_NAME)
+    }
+
+    pub fn load_problem_info(&self) -> Result<ProblemInfo> {
+        fsutil::read_json_with_deserialize(self.problem_info_file())
     }
 }
 
