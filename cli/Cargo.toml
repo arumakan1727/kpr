@@ -23,8 +23,10 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = {  workspace = true }
 dirs = { workspace = true }
+env_logger = { workspace = true }
 envy = { workspace = true }
 lazy-regex = { workspace = true }
+log = { workspace = true }
 once_cell = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
