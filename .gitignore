@@ -1,1 +1,18 @@
-/target
+target/
+.envrc
+.env
+
+# `kpr` command generates
+/kpr-repository.toml
+/vault/
+/template/
+/workspace/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
