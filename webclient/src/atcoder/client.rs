@@ -2,12 +2,14 @@ use ::async_trait::async_trait;
 use ::chrono::DateTime;
 use ::cookie::Cookie;
 use ::reqwest::cookie::{CookieStore as _, Jar};
-use ::scraper::{ElementRef, Html, Selector};
-use ::serde::{Deserialize, Serialize};
 use ::std::{collections::HashMap, sync::Arc, time::Duration};
 
-use super::urls::*;
-use crate::{error::*, model::*, util};
+use super::{auth::AuthCookie, helper, urls::*};
+use crate::{
+    error::*,
+    model::*,
+    util::{self, DocExt as _, ElementExt as _, ElementRefExt as _},
+};
 
 macro_rules! bail {
     ($e:expr) => {
@@ -28,88 +30,7 @@ pub struct AtCoderClient {
     jar: Arc<Jar>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AuthCookie {
-    pub session_id: Option<String>,
-}
-
-impl Default for AuthCookie {
-    fn default() -> Self {
-        AuthCookie { session_id: None }
-    }
-}
-
-impl AuthCookie {
-    pub fn from_json(s: &str) -> serde_json::Result<Self> {
-        serde_json::from_str(s)
-    }
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-    pub fn revoke(&mut self) {
-        self.session_id = None;
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AtCoderCred {
-    pub username: String,
-    pub password: String,
-}
-
-impl From<AtCoderCred> for CredMap {
-    fn from(c: AtCoderCred) -> Self {
-        let mut h = CredMap::new();
-        h.insert("username", c.username);
-        h.insert("password", c.password);
-        h
-    }
-}
-
 const COOKIE_KEY_SESSION_ID: &str = "REVEL_SESSION";
-
-fn extract_testcase(pre: ElementRef) -> String {
-    let node = pre.first_child().unwrap().value();
-    let mut s = node.as_text().unwrap().trim().to_owned();
-    s.push('\n');
-    s
-}
-
-fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
-    let sel_parts_modern_ver = Selector::parse("#task-statement .lang-ja > .part").unwrap();
-    let sel_parts_old_ver = Selector::parse("#task-statement > .part").unwrap();
-    let sel_h3 = Selector::parse("h3").unwrap();
-    let sel_pre = Selector::parse("pre").unwrap();
-
-    let mut in_cases = Vec::with_capacity(5);
-    let mut out_cases = Vec::with_capacity(5);
-
-    for node in doc
-        .select(&sel_parts_modern_ver)
-        .chain(doc.select(&sel_parts_old_ver))
-    {
-        let h3 = node.select(&sel_h3).next().unwrap();
-        let title = h3.text().next().unwrap().trim().to_lowercase();
-        if title.starts_with("入力例") || title.starts_with("sample input") {
-            let pre = node.select(&sel_pre).next().unwrap();
-            in_cases.push(extract_testcase(pre));
-        } else if title.starts_with("出力例") || title.starts_with("sample output") {
-            let pre = node.select(&sel_pre).next().unwrap();
-            out_cases.push(extract_testcase(pre));
-        }
-    }
-    let cases: Vec<_> = in_cases
-        .into_iter()
-        .zip(out_cases)
-        .enumerate()
-        .map(|(i, (input, output))| SampleTestcase {
-            ord: (i + 1) as u32,
-            input,
-            output,
-        })
-        .collect();
-    Ok(cases)
-}
 
 impl AtCoderClient {
     pub fn new() -> Self {
@@ -190,24 +111,21 @@ impl Client for AtCoderClient {
             url.set_query(Some("lang=en"));
             url
         };
-        let tasks_html = self.http.get(tasks_en_url).send().await?.text().await?;
-        let doc = Html::parse_document(&tasks_html);
+        let doc = util::fetch_html(&self.http, tasks_en_url).await?;
 
         let short_title = {
             let caps = RE_CONTEST_URL_PATH.captures(contest_url.path()).unwrap();
             caps[1].to_owned()
         };
         let long_title = {
-            let sel = Selector::parse("#navbar-collapse .contest-title").unwrap();
-            let node = doc.select(&sel).next().unwrap();
-            node.text().next().unwrap().to_owned()
+            let sel = util::selector_must_parsed("#navbar-collapse .contest-title");
+            let node = doc.select_first(&sel)?;
+            node.first_text(&sel)?.to_owned()
         };
         let (start_at, end_at) = {
-            let sel = Selector::parse("#contest-nav-tabs .contest-duration>a>time").unwrap();
-            let mut itr = doc.select(&sel);
-            let node1 = itr.next().unwrap();
-            let node2 = itr.next().unwrap();
-            let (s1, s2) = (node1.text().next().unwrap(), node2.text().next().unwrap());
+            let sel = util::selector_must_parsed("#contest-nav-tabs .contest-duration>a>time");
+            let (node1, node2) = doc.select_double(&sel)?;
+            let (s1, s2) = (node1.first_text(&sel)?, node2.first_text(&sel)?);
 
             const FMT: &str = "%Y-%m-%d %H:%M:%S%z";
             use chrono::Local;
@@ -216,21 +134,23 @@ impl Client for AtCoderClient {
             (t1.with_timezone(&Local), t2.with_timezone(&Local))
         };
         let problems: Vec<ContestProblemOutline> = {
-            let sel_tr = Selector::parse("#main-container table > tbody > tr").unwrap();
-            let sel_title = Selector::parse("td:nth-child(2) > a").unwrap();
-            doc.select(&sel_tr)
+            let sel_tr = util::selector_must_parsed("#main-container table > tbody > tr");
+            let sel_title = util::selector_must_parsed("td:nth-child(2) > a");
+            let res: Result<Vec<_>> = doc
+                .select(&sel_tr)
                 .enumerate()
                 .map(|(i, node)| {
-                    let title_el = node.select(&sel_title).next().unwrap();
-                    let url_path = title_el.value().attr("href").unwrap();
-                    let url = Url::parse(&util::complete_url(url_path, DOMAIN)).unwrap();
-                    ContestProblemOutline {
+                    let title_el = node.select_first(&sel_title)?;
+                    let url_path = title_el.value().get_attr("href", &sel_title)?;
+                    let url = util::complete_url(url_path, DOMAIN)?;
+                    Ok(ContestProblemOutline {
                         url,
                         ord: (i + 1) as u32,
-                        title: title_el.text().next().unwrap().trim().to_owned(),
-                    }
+                        title: title_el.first_text(&sel_title)?.trim().to_owned(),
+                    })
                 })
-                .collect()
+                .collect();
+            res?
         };
 
         Ok(ContestInfo {
@@ -247,25 +167,18 @@ impl Client for AtCoderClient {
         &self,
         problem_url: &Url,
     ) -> Result<(ProblemInfo, Vec<SampleTestcase>)> {
-        let html = self
-            .http
-            .get(problem_url.clone())
-            .send()
-            .await?
-            .text()
-            .await?;
-        let doc = Html::parse_document(&html);
+        let doc = util::fetch_html(&self.http, problem_url.clone()).await?;
         let title = {
-            let sel = Selector::parse("#main-container > div .h2").unwrap();
-            let node = doc.select(&sel).next().unwrap();
-            let s = node.text().next().unwrap().trim().to_owned();
+            let sel = util::selector_must_parsed("#main-container > div .h2");
+            let node = doc.select_first(&sel)?;
+            let s = node.first_text(&sel)?.trim().to_owned();
             let (_, title) = s.split_once("-").unwrap();
             title.trim().to_owned()
         };
         let (execution_time_limit, memory_limit_kb) = {
-            let sel = Selector::parse("#main-container > div > div:nth-child(2) > p").unwrap();
-            let node = doc.select(&sel).next().unwrap();
-            let text = node.text().next().unwrap();
+            let sel = util::selector_must_parsed("#main-container > div > div:nth-child(2) > p");
+            let node = doc.select_first(&sel)?;
+            let text = node.first_text(&sel)?;
             let xs: Vec<_> = text.split("/").map(str::trim).collect();
 
             let (time_limit, memory_limit) = if xs[0].starts_with("Time") {
@@ -285,7 +198,7 @@ impl Client for AtCoderClient {
             )
         };
         let problem_id = unsafe { self.extract_problem_id(problem_url).unwrap_unchecked() };
-        let testcases = scrape_testcases(&doc)?;
+        let testcases = helper::scrape_testcases(&doc)?;
         let info = ProblemInfo {
             platform: self.platform(),
             url: problem_url.to_owned(),
@@ -313,11 +226,10 @@ impl Client for AtCoderClient {
 
     async fn login(&mut self, cred: CredMap) -> Result<()> {
         let csrf_token = {
-            let html = self.http.get(LOGIN_URL).send().await?.text().await?;
-            let doc = Html::parse_document(&html);
-            let sel = Selector::parse("#main-container form > input[name='csrf_token']").unwrap();
-            let el = doc.select(&sel).next().unwrap().value();
-            el.attr("value").unwrap().to_owned()
+            let doc = util::fetch_html_with_parse_url(&self.http, LOGIN_URL).await?;
+            let sel = util::selector_must_parsed("#main-container form > input[name='csrf_token']");
+            let el = doc.select_first(&sel)?.value();
+            el.get_attr("value", &sel)?.to_owned()
         };
         let resp = {
             let mut params = cred;
@@ -356,11 +268,10 @@ impl Client for AtCoderClient {
 
     async fn logout(&mut self) -> Result<()> {
         let csrf_token = {
-            let html = self.http.get(HOME_URL).send().await?.text().await?;
-            let doc = Html::parse_document(&html);
-            let sel = Selector::parse("#main-div form > input[name='csrf_token']").unwrap();
-            let el = doc.select(&sel).next().unwrap().value();
-            el.attr("value").unwrap().to_owned()
+            let doc = util::fetch_html_with_parse_url(&self.http, HOME_URL).await?;
+            let sel = util::selector_must_parsed("#main-div form > input[name='csrf_token']");
+            let el = doc.select_first(&sel)?.value();
+            el.get_attr("value", &sel)?.to_owned()
         };
         let resp = {
             let mut params = HashMap::new();
@@ -387,18 +298,23 @@ impl Client for AtCoderClient {
                 requested_url: url.to_string(),
             }
         );
-        let html = self.http.get(url).send().await?.text().await?;
-        let doc = Html::parse_document(&html);
+        let doc = util::fetch_html(&self.http, url).await?;
 
-        let sel = Selector::parse("#select-lang select > option[value]").unwrap();
+        let sel = util::selector_must_parsed("#select-lang select > option[value]");
 
-        let langs: Vec<_> = doc
+        let langs = doc
             .select(&sel)
-            .map(|el| PgLang {
-                id: el.value().attr("value").unwrap().to_owned(),
-                name: el.text().next().unwrap().trim().to_owned(),
+            .map(|el| {
+                Ok(PgLang {
+                    id: el.value().get_attr("value", &sel)?.to_owned(),
+                    name: el.first_text(&sel)?.trim().to_owned(),
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
+
+        if langs.is_empty() {
+            return Err(Error::NoSuchElementMatchesToSelector(sel));
+        }
         Ok(langs)
     }
 
@@ -411,11 +327,10 @@ impl Client for AtCoderClient {
         );
         let csrf_token = {
             let url = problem_url.clone();
-            let html = self.http.get(url).send().await?.text().await?;
-            let doc = Html::parse_document(&html);
-            let sel = Selector::parse("#main-div form > input[name='csrf_token']").unwrap();
-            let el = doc.select(&sel).next().unwrap().value();
-            el.attr("value").unwrap().to_owned()
+            let doc = util::fetch_html(&self.http, url).await?;
+            let sel = util::selector_must_parsed("#main-div form > input[name='csrf_token']");
+            let el = doc.select_first(&sel)?.value();
+            el.get_attr("value", &sel)?.to_owned()
         };
         let (contest_name, task_name) = {
             let caps = RE_PROBLEM_URL_PATH.captures(problem_url.path()).unwrap();
@@ -441,9 +356,7 @@ impl Client for AtCoderClient {
         let location = util::extract_302_location_header(&resp, submit_url)?;
         let submissions_path = format!("/contests/{}/submissions/me", contest_name);
         match location.as_str() {
-            path if path == submissions_path => {
-                Ok(Url::parse(&util::complete_url(path, DOMAIN)).unwrap())
-            }
+            path if path == submissions_path => Ok(util::complete_url(path, DOMAIN)?),
             path if path.starts_with("/login") => Err(Error::NeedLogin {
                 requested_url: problem_url.to_string(),
             }),
