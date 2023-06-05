@@ -1,10 +1,17 @@
 use scraper::{ElementRef, Html};
 
-use crate::{error::*, model::SampleTestcase, util};
+use crate::{
+    error::*,
+    model::SampleTestcase,
+    util::{self, DocExt, ElementRefExt},
+};
 
 fn extract_testcase(pre: ElementRef) -> String {
-    let node = pre.first_child().unwrap().value();
-    let mut s = node.as_text().unwrap().trim().to_owned();
+    // innerText が存在しない場合 (`<pre></pre>`) は空文字列を返す
+    let Some(node) = pre.first_child() else {
+        return "".to_owned()
+    };
+    let mut s = node.value().as_text().unwrap().trim().to_owned();
     s.push('\n');
     s
 }
@@ -22,13 +29,13 @@ pub fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
         .select(&sel_parts_modern_ver)
         .chain(doc.select(&sel_parts_old_ver))
     {
-        let h3 = node.select(&sel_h3).next().unwrap();
-        let title = h3.text().next().unwrap().trim().to_lowercase();
+        let h3 = node.select_first(&sel_h3)?;
+        let title = h3.first_text(&sel_h3)?.trim().to_lowercase();
         if title.starts_with("入力例") || title.starts_with("sample input") {
-            let pre = node.select(&sel_pre).next().unwrap();
+            let pre = node.select_first(&sel_pre)?;
             in_cases.push(extract_testcase(pre));
         } else if title.starts_with("出力例") || title.starts_with("sample output") {
-            let pre = node.select(&sel_pre).next().unwrap();
+            let pre = node.select_first(&sel_pre)?;
             out_cases.push(extract_testcase(pre));
         }
     }

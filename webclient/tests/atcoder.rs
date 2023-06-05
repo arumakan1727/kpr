@@ -221,7 +221,7 @@ async fn fetch_abc001_info() {
 }
 
 #[tokio::test]
-async fn fetch_abc003_4_detail() {
+async fn fetch_problem_detail_abc003_4() {
     // Avoid Dos attack
     sleep_random_ms();
 
@@ -269,7 +269,7 @@ async fn fetch_abc003_4_detail() {
 }
 
 #[tokio::test]
-async fn fetch_abc086_a_detail() {
+async fn fetch_problem_detail_abc086_a() {
     // Avoid Dos attack
     sleep_random_ms();
 
@@ -307,11 +307,11 @@ async fn fetch_abc086_a_detail() {
 }
 
 #[tokio::test]
-async fn fetch_typical90_az_detail() {
+async fn fetch_problem_detail_typical90_b_which_contains_empty_pre_tag() {
     // Avoid Dos attack
     sleep_random_ms();
 
-    let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_az/";
+    let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_b/";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
     let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
@@ -322,7 +322,7 @@ async fn fetch_typical90_az_detail() {
             platform: Platform::AtCoder,
             url: url.clone(),
             problem_id: ProblemId::try_from(&url).unwrap(),
-            title: "Dice Product（★3）".to_owned(),
+            title: "Encyclopedia of Parentheses（★3）".to_owned(),
             execution_time_limit: Duration::from_secs(2),
             memory_limit_kb: 1024 * 1024,
         }
@@ -332,34 +332,67 @@ async fn fetch_typical90_az_detail() {
         vec![
             SampleTestcase {
                 ord: 1,
-                input: "\
-2
-1 2 3 5 7 11
-4 6 8 9 10 12\n"
-                    .to_owned(),
-                output: "1421\n".to_owned(),
+                input: "2\n".to_owned(),
+                output: "()\n".to_owned(),
             },
             SampleTestcase {
                 ord: 2,
-                input: "\
-1
-11 13 17 19 23 29\n"
-                    .to_owned(),
-                output: "112\n".to_owned(),
+                input: "3\n".to_owned(),
+                output: "".to_owned(),
             },
             SampleTestcase {
                 ord: 3,
-                input: "\
-7
-19 23 51 59 91 99
-15 45 56 65 69 94
-7 11 16 34 59 95
-27 30 40 43 83 85
-19 23 25 27 45 99
-27 48 52 53 60 81
-21 36 49 72 82 84\n"
-                    .to_owned(),
-                output: "670838273\n".to_owned(),
+                input: "4\n".to_owned(),
+                output: "(())\n()()\n".to_owned(),
+            },
+            SampleTestcase {
+                ord: 4,
+                input: "10\n".to_owned(),
+                output: "\
+((((()))))
+(((()())))
+(((())()))
+(((()))())
+(((())))()
+((()(())))
+((()()()))
+((()())())
+((()()))()
+((())(()))
+((())()())
+((())())()
+((()))(())
+((()))()()
+(()((())))
+(()(()()))
+(()(())())
+(()(()))()
+(()()(()))
+(()()()())
+(()()())()
+(()())(())
+(()())()()
+(())((()))
+(())(()())
+(())(())()
+(())()(())
+(())()()()
+()(((())))
+()((()()))
+()((())())
+()((()))()
+()(()(()))
+()(()()())
+()(()())()
+()(())(())
+()(())()()
+()()((()))
+()()(()())
+()()(())()
+()()()(())
+()()()()()
+"
+                .to_owned(),
             },
         ]
     )
