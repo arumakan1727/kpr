@@ -16,6 +16,7 @@ kpr-webclient = { path = "../webclient/" }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
+colored = { workspace = true }
 dialoguer = { workspace = true }
 glob = { workspace = true }
 log = { workspace = true }
