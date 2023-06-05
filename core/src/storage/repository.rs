@@ -5,10 +5,7 @@ use std::{
 
 use anyhow::bail;
 
-use crate::{
-    config::{Config, RepoConfig},
-    fsutil,
-};
+use crate::config::{Config, RepoConfig};
 
 use super::{VaultHome, WorkspaceHome};
 

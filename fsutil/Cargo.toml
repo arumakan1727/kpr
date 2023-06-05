@@ -1,8 +1,8 @@
 [package]
-name = "kpr-core"
+name = "fsutil"
 version = "0.1.0"
 description = """
-Core library for kpr (kyopro-cli).
+File system utility
 """
 authors.workspace = true
 edition.workspace = true
@@ -11,21 +11,9 @@ repository.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-kpr-webclient = { path = "../webclient/" }
-fsutil = { path = "../fsutil/" }
-
-anyhow = { workspace = true }
-async-trait = { workspace = true }
-chrono = { workspace = true }
-colored = { workspace = true }
-dialoguer = { workspace = true }
 glob = { workspace = true }
 log = { workspace = true }
-once_cell = { workspace = true }
-rust-embed = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-strum = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
 toml = { workspace = true }

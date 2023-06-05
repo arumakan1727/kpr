@@ -13,7 +13,6 @@ use kpr_webclient::{PgLang, ProblemInfo, SampleTestcase, Url};
 
 use crate::client::SessionPersistentClient;
 use crate::config::{SubmissionConfig, TestConfig};
-use crate::fsutil;
 use crate::interactive::ask_credential;
 use crate::storage::{
     workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,

@@ -1,5 +1,5 @@
 pub mod error {
-    pub use crate::fsutil::error::*;
+    pub use ::fsutil::error::*;
 }
 
 pub mod repository;

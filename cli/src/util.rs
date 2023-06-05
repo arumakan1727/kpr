@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-use kpr_core::{fsutil, serdable::GlobPattern};
+use kpr_core::serdable::GlobPattern;
 
 pub fn dedup<T>(mut v: Vec<T>) -> Vec<T>
 where

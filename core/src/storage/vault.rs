@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use kpr_webclient::{PgLang, Platform, ProblemId, ProblemInfo, SampleTestcase};
 
 use super::error::Result;
-use crate::fsutil;
 
 #[derive(Debug, Clone, Copy)]
 pub struct VaultHome<'a> {

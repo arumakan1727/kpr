@@ -534,6 +534,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fsutil"
+version = "0.1.0"
+dependencies = [
+ "glob",
+ "log",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
 name = "futf"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -902,6 +914,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "envy",
+ "fsutil",
  "kpr-core",
  "kpr-webclient",
  "lazy-regex",
@@ -924,6 +937,7 @@ dependencies = [
  "chrono",
  "colored",
  "dialoguer",
+ "fsutil",
  "glob",
  "kpr-webclient",
  "log",

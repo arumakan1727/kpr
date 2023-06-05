@@ -8,8 +8,6 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use tokio::{fs::File as TokioFile, io::AsyncRead};
 
-use crate::fsutil;
-
 pub trait Testcase<'a> {
     type Reader: Read;
     fn name(&self) -> &str;

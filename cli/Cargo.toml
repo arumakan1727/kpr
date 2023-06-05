@@ -18,6 +18,7 @@ path = "src/main.rs"
 [dependencies]
 kpr-core = { path = "../core" }
 kpr-webclient = { path = "../webclient/" }
+fsutil = { path = "../fsutil/" }
 
 anyhow = { workspace = true }
 chrono = { workspace = true }
