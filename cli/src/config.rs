@@ -39,12 +39,12 @@ impl GlobalConfig {
             _ => return GlobalConfig::default(),
         };
         toml::from_str(&toml_str).unwrap_or_else(|e| {
-            eprintln!(
-                "[Warn] Invalid config '{}': {:#}",
-                util::replace_homedir_to_tilde(path).to_string_lossy(),
+            log::error!(
+                "Invalid config '{:?}': {:#}",
+                util::replace_homedir_to_tilde(path),
                 e
             );
-            Self::default()
+            std::process::exit(1)
         })
     }
 

@@ -32,7 +32,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     for platform in platforms.into_iter().map(Into::<Platform>::into) {
         let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
         action::logout(&mut cli).await?;
-        eprintln!("Successfully logged out from {}", platform);
+        println!("Successfully logged out from {}", platform);
     }
     Ok(())
 }
