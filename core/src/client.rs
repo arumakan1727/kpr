@@ -38,7 +38,10 @@ impl SessionPersistentClient {
         };
 
         x.load_authtoken_if_file_exists().unwrap_or_else(|e| {
-            eprintln!("[Warn] Initializing SessionPersistenceClient: {}", e);
+            log::warn!(
+                "Ignoreing authotken due to invalid saved data on initializing SessionPersistenceClient: {}",
+                e
+            );
         });
         x
     }

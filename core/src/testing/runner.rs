@@ -186,7 +186,7 @@ impl TestRunner {
             Err(_) => {
                 proc.kill()
                     .await
-                    .unwrap_or_else(|e| eprintln!("[Warn] Failed to kill TLE process: {:#}", e));
+                    .unwrap_or_else(|e| log::warn!("Failed to kill TLE process: {:#}", e));
                 (JudgeCode::TLE, None)
             }
 

@@ -19,7 +19,7 @@ where
 
 pub fn current_dir() -> PathBuf {
     std::env::current_dir().unwrap_or_else(|e| {
-        eprintln!("Failed to get current dir: {}", e);
+        log::error!("Failed to get current dir: {}", e);
         exit(1);
     })
 }
