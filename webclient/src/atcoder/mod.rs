@@ -1,7 +1,7 @@
 pub mod auth;
 pub mod client;
-pub mod urls;
 mod helper;
+pub mod urls;
 
 pub use auth::*;
 pub use client::*;
