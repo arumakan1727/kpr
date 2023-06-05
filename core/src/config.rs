@@ -7,7 +7,6 @@ use rust_embed::RustEmbed;
 use serde::Deserialize;
 
 use crate::collections::GlobMap;
-use crate::fsutil;
 use crate::serdable::GlobPattern;
 use crate::testing::runner::TestCommand;
 

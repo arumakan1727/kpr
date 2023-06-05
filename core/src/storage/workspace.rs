@@ -1,13 +1,11 @@
 use std::path::{Path, PathBuf};
 
+use ::fsutil::{self, OptCopyContents};
 use chrono::{DateTime, Local};
 use kpr_webclient::ProblemInfo;
 
 use super::{error::Result, vault::ProblemVault};
-use crate::{
-    fsutil::{self, OptCopyContents},
-    testing::{FsTestcase, FsTestcaseFinder},
-};
+use crate::testing::{FsTestcase, FsTestcaseFinder};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WorkspaceHome<'a> {
