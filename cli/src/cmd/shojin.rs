@@ -1,5 +1,5 @@
 use chrono::Local;
-use kpr_core::{action, client::SessionPersistentClient, storage::Repository};
+use kpr_core::{action, client::SessionPersistentClient, storage::Repository, print_success};
 
 use super::{GlobalArgs, SubcmdResult};
 use crate::{config::GlobalConfig, util};
@@ -19,7 +19,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     let saved_loc = action::create_shojin_workspace(&cli, &url, &repo, Local::now()).await?;
 
-    println!(
+    print_success!(
         "Successfully created shojin workspace in {}",
         saved_loc.dir().to_string_lossy()
     );

@@ -1,6 +1,6 @@
 use anyhow::ensure;
 use clap::ValueEnum as _;
-use kpr_core::{action, client::SessionPersistentClient};
+use kpr_core::{action, client::SessionPersistentClient, print_success};
 use kpr_webclient::Platform;
 
 use super::{ArgPlatform, GlobalArgs, SubcmdResult};
@@ -32,7 +32,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     for platform in platforms.into_iter().map(Into::<Platform>::into) {
         let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
         action::logout(&mut cli).await?;
-        println!("Successfully logged out from {}", platform);
+        print_success!("Successfully logged out from {}", platform);
     }
     Ok(())
 }

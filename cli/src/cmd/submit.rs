@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{ensure, Context as _};
+use colored::Colorize;
 use kpr_core::{
     action::{self, ensure_submittable_lang_list_saved},
     client::SessionPersistentClient,
@@ -45,7 +46,10 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     if run_test {
         let res = action::do_test(&program_file, workspace.testcase_dir(), &cfg.test).await?;
         if res.iter().any(|x| x.judge != JudgeCode::AC) {
-            println!("Canceling submission due to test failure.");
+            println!(
+                "{}",
+                "Canceling submission due to test failure.".bright_red()
+            );
             return Ok(());
         }
     }
@@ -72,8 +76,13 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     .await?;
 
     println!(
-        "Successfully submitted {:?} to {}\nSubmission status URL:\n  {}",
-        program_file, problem_url, submission_status_url,
+        "{}\nSubmission status URL:\n  {}",
+        format!(
+            "Successfully submitted {:?} to {}",
+            program_file, problem_url
+        )
+        .green(),
+        submission_status_url.to_string().cyan(),
     );
 
     Ok(())

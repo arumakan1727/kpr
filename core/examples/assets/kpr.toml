@@ -13,6 +13,8 @@ workspace_template = './template'
 shell = '/bin/sh'
 include = '[mM]ain.*'
 compile_before_run = true
+stdout_capture_max_bytes = 1024
+stderr_capture_max_bytes = 4096
 
 [[test.command]]
 pattern = '*.cpp'
@@ -28,12 +30,12 @@ compile = """\
 run = './#{fileStem}'
 
 [[test.command]]
-pattern = '*.cpython.py'
-run = 'python3 #{fileName}'
-
-[[test.command]]
 pattern = '*.pypy.py'
 run = 'pypy3 #{fileName}'
+
+[[test.command]]
+pattern = '*.py'
+run = 'python3 #{fileName}'
 
 [submit]
 run_test = true
@@ -44,6 +46,6 @@ run_test = true
 [submit.lang]
 atcoder = [
   { pattern = '*.cpp', lang = 'C++ (GCC 9.2.1)' },
-  { pattern = '*.cpython.py', lang = 'Python (3.8.2)' },
   { pattern = '*.pypy.py', lang = 'PyPy3 (7.3.0)' },
+  { pattern = '*.py', lang = 'Python (3.8.2)' },
 ]

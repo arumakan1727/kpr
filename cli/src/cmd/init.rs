@@ -1,4 +1,4 @@
-use kpr_core::action;
+use kpr_core::{action, print_success};
 use std::path::PathBuf;
 
 use super::{GlobalArgs, SubcmdResult};
@@ -11,7 +11,7 @@ pub struct Args {
 
 pub fn exec(args: &Args, _: &GlobalArgs) -> SubcmdResult {
     action::init_kpr_repository(&args.dir)?;
-    println!(
+    print_success!(
         "Successfully initialized kpr repository. (path: {})",
         args.dir.to_string_lossy()
     );

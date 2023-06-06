@@ -3,21 +3,25 @@ pub mod error {
     pub(crate) use anyhow::{anyhow, bail, ensure, Context as _};
     pub use anyhow::{Error, Result};
 }
-use std::path::Path;
-use std::time::Duration;
+
+use std::{path::Path, time::Duration};
 
 use chrono::{DateTime, Local};
-use error::*;
-use kpr_webclient::problem_id::ProblemGlobalId;
-use kpr_webclient::{PgLang, ProblemInfo, SampleTestcase, Url};
+use colored::Colorize;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use kpr_webclient::{problem_id::ProblemGlobalId, PgLang, ProblemInfo, SampleTestcase, Url};
 
-use crate::client::SessionPersistentClient;
-use crate::config::{SubmissionConfig, TestConfig};
-use crate::interactive::ask_credential;
-use crate::storage::{
-    workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
+use self::error::*;
+use crate::{
+    client::SessionPersistentClient,
+    config::{SubmissionConfig, TestConfig},
+    interactive::{self, ask_credential},
+    storage::{
+        workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
+    },
+    style,
+    testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner},
 };
-use crate::testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
     ensure!(
@@ -194,7 +198,7 @@ pub async fn create_contest_workspace(
                 },
             )
             .context("Failed to create contest workspace")?;
-        println!(
+        log::info!(
             "Successfully created workspace {}",
             loc.dir().to_string_lossy()
         );
@@ -231,31 +235,58 @@ pub async fn do_test(
 
     if cfg.compile_before_run && runner.is_compile_cmd_defined() {
         let cmd = runner.get_command().compile.as_ref().unwrap();
-        println!("Compiling {}\n{}", filename, cmd);
+        log::info!("Compiling {}", filename);
+        log::info!("{}", cmd);
         runner.compile().await?;
     }
 
-    println!("Run command: {}", runner.get_command().run);
+    let style = ProgressStyle::default_spinner();
 
     let mut results = Vec::with_capacity(testcases.len());
+    let mut bars = Vec::with_capacity(testcases.len());
+    let progress_bar_container = MultiProgress::new();
+
+    log::info!("Running: {}", runner.get_command().run);
+
+    // Prepare progress bar
     for t in &testcases {
-        print!("Running testcase {} ... ", t.name());
+        let bar = progress_bar_container
+            .add(ProgressBar::new(100))
+            .with_style(style.clone())
+            .with_message(format!("Testcase {} ...", t.name()));
+        let bar = interactive::tick_spinner(bar);
+        bars.push(bar);
+    }
 
-        let res = runner.run(t).await?;
-        println!("{} {:?}", res.judge, res.execution_time);
-
-        if res.judge != JudgeCode::AC && res.output.is_some() {
-            let o = res.output.as_ref().unwrap();
-            let bold_line = "=".repeat(50);
-            let dash_line = " -".repeat(10);
-            println!("{}", bold_line);
-            println!("{} stdout{}\n{}", dash_line, dash_line, o.stdout);
-            println!("{} stderr{}\n{}", dash_line, dash_line, o.stderr);
-            println!("{}", bold_line);
-        }
-
+    for (t, bar) in testcases.iter().zip(&bars) {
+        let res = runner
+            .run(
+                t,
+                cfg.stdout_capture_max_bytes,
+                cfg.stderr_capture_max_bytes,
+            )
+            .await?;
+        bar.lock().await.finish_with_message({
+            format!(
+                "Testcase {} ... {}{} [{}ms]",
+                t.name(),
+                style::judge_icon(res.judge),
+                " ".repeat(3 - res.judge.to_string().len()),
+                res.execution_time.as_millis(),
+            )
+            .cyan()
+            .to_string()
+        });
         results.push(res);
     }
+    print!("\n");
+
+    results
+        .iter()
+        .filter(|x| x.judge != JudgeCode::AC)
+        .for_each(style::print_test_result_detail);
+
+    style::print_test_result_summary(&results);
     Ok(results)
 }
 
