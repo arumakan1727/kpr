@@ -12,7 +12,11 @@ use crate::error::Result;
 use async_trait::async_trait;
 
 pub trait UrlAnalyzer {
-    fn is_supported_origin(url: &Url) -> bool;
+    fn is_https(url: &Url) -> bool {
+        url.scheme() == "https" && url.port_or_known_default() == Some(443)
+    }
+
+    fn is_supported_url(url: &Url) -> bool;
     fn is_contest_home_url(url: &Url) -> bool;
     fn is_problem_url(url: &Url) -> bool;
     fn extract_problem_id(url: &Url) -> problem_id::Result<ProblemId>;

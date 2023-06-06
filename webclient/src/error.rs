@@ -1,5 +1,6 @@
 use reqwest::StatusCode;
 use scraper::Selector;
+use url::Url;
 
 pub type Result<T> = ::std::result::Result<T, Error>;
 
@@ -18,6 +19,9 @@ pub enum Error {
         #[source]
         source: url::ParseError,
     },
+
+    #[error("Not a contest URL '{0}'")]
+    NotContestUrl(Url),
 
     #[error("Unexpected response code '{got}' (expected '{expected}') while requesting to {requested_url}")]
     UnexpectedResponseCode {

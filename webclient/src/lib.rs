@@ -37,12 +37,10 @@ pub fn detect_platform(url: impl TryInto<Url>) -> Option<Platform> {
 }
 
 pub fn detect_platform_from_url(url: &Url) -> Option<Platform> {
-    let Some(domain) = url.domain() else {
-        return None
-    };
-    match domain {
-        atcoder::DOMAIN => Some(Platform::AtCoder),
-        _ => None,
+    if AtCoderUrlAnalyzer::is_supported_url(url) {
+        Some(Platform::AtCoder)
+    } else {
+        None
     }
 }
 

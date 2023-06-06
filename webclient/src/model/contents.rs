@@ -18,7 +18,6 @@ pub struct ContestInfo {
 pub struct ContestProblemOutline {
     pub url: Url,
     pub ord: u32,
-    pub title: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
