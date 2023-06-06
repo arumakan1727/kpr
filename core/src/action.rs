@@ -20,7 +20,7 @@ use crate::{
         workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
     },
     style,
-    testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner},
+    testing::{AsyncTestcase, FsTestcase, JudgeCode, TestCommand, TestOutcome, TestRunner},
 };
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -207,8 +207,8 @@ pub async fn create_contest_workspace(
     Ok(workspace_locations)
 }
 
-pub async fn do_test(
-    program_file: impl AsRef<Path>,
+pub async fn do_test_with_runner(
+    runner: &TestRunner,
     testcase_dir: impl AsRef<Path>,
     cfg: &TestConfig,
 ) -> Result<Vec<TestOutcome>> {
@@ -221,22 +221,9 @@ pub async fn do_test(
         );
     }
 
-    let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
-    let cmd = cfg.find_test_cmd_for_filename(&filename).with_context(|| {
-        format!(
-            "Unconfigured test command for filename '{}' (No entry matched glob in `test.command[]`)",
-            filename
-        )
-    })?;
-
-    let runner = TestRunner::new(cmd)
-        .shell(cfg.shell.to_owned())
-        .program_file(&program_file)?;
-
     if cfg.compile_before_run && runner.is_compile_cmd_defined() {
         let cmd = runner.get_command().compile.as_ref().unwrap();
-        log::info!("Compiling {}", filename);
-        log::info!("{}", cmd);
+        log::info!("Compile: {}", cmd);
         runner.compile().await?;
     }
 
@@ -288,6 +275,35 @@ pub async fn do_test(
 
     style::print_test_result_summary(&results);
     Ok(results)
+}
+
+pub async fn do_test_with_command(
+    cmd: TestCommand,
+    testcase_dir: impl AsRef<Path>,
+    cfg: &TestConfig,
+) -> Result<Vec<TestOutcome>> {
+    let runner = TestRunner::new(cmd).shell(cfg.shell.to_owned());
+    self::do_test_with_runner(&runner, testcase_dir, cfg).await
+}
+
+pub async fn do_test(
+    program_file: impl AsRef<Path>,
+    testcase_dir: impl AsRef<Path>,
+    cfg: &TestConfig,
+) -> Result<Vec<TestOutcome>> {
+    let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
+    let cmd = cfg.find_test_cmd_for_filename(&filename).with_context(|| {
+            format!(
+                "Unconfigured test command for filename '{}' (No entry matched glob in `test.command[]`)",
+                filename
+            )
+        })?;
+
+    let runner = TestRunner::new(cmd)
+        .shell(cfg.shell.to_owned())
+        .program_file(&program_file)?;
+
+    self::do_test_with_runner(&runner, testcase_dir, cfg).await
 }
 
 pub async fn submit(
