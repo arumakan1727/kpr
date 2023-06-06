@@ -76,8 +76,8 @@ impl Repository {
                 config_filepath
             };
             bail!(
-                "Already being kpr-repository. (found config: '{}')",
-                path.to_string_lossy()
+                "Already being kpr-repository.\nIf it's intentional, remove {:?} and then try again.",
+                path
             );
         }
 
