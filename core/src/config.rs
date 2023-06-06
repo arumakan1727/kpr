@@ -35,6 +35,8 @@ pub struct TestConfig {
     pub shell: PathBuf,
     pub include: GlobPattern,
     pub compile_before_run: bool,
+    pub stdout_capture_max_bytes: usize,
+    pub stderr_capture_max_bytes: usize,
     pub command: Vec<TestCommandConfig>,
 }
 

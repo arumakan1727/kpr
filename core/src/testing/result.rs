@@ -11,7 +11,8 @@ pub struct ProcessOutput {
 pub struct TestOutcome {
     pub judge: JudgeCode,
     pub execution_time: Duration,
-    pub output: Option<ProcessOutput>,
+    pub groundtruth: String,
+    pub output: ProcessOutput,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]

@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-use tokio::process::Command;
+use tokio::{io::AsyncReadExt, process::Command};
 
 use super::{result::*, testcase::*};
 use crate::str_interp::{interp, InterpError};
@@ -129,7 +129,12 @@ impl TestRunner {
         }
     }
 
-    pub async fn run<'t, T>(&self, testcase: &'t T) -> anyhow::Result<TestOutcome>
+    pub async fn run<'t, T>(
+        &self,
+        testcase: &'t T,
+        stdout_capture_max_bytes: usize,
+        stderr_capture_max_bytes: usize,
+    ) -> anyhow::Result<TestOutcome>
     where
         T: AsyncTestcase<'t>,
     {
@@ -138,8 +143,11 @@ impl TestRunner {
             testcase.new_groundtruth_reader()
         )?;
 
-        let mut stdout_buf = Vec::new();
-        let mut stderr_buf = Vec::new();
+        let mut stdout_buf = Vec::with_capacity(stdout_capture_max_bytes);
+        let mut stderr_buf = Vec::with_capacity(stderr_capture_max_bytes);
+
+        let mut groundtrugh_buf = Vec::new();
+        let fut_groundtruth_read = tokio::io::copy(&mut groundtruth_reader, &mut groundtrugh_buf);
 
         let cmd = &self.cmd.run;
         let mut proc = Command::new(&self.shell)
@@ -155,9 +163,9 @@ impl TestRunner {
                     &cmd
                 )
             })?;
-        let mut stdin = proc.stdin.take().context("Failed to open stdin")?;
-        let mut stdout = proc.stdout.take().context("Failed to open stdout")?;
-        let mut stderr = proc.stderr.take().context("Failed to open stderr")?;
+        let mut stdout = proc.stdout.take().expect("Failed to open stdout");
+        let mut stderr = proc.stderr.take().expect("Failed to open stderr");
+        let mut stdin = proc.stdin.take().expect("Failed to open stdin");
 
         tokio::io::copy(&mut input_reader, &mut stdin)
             .await
@@ -165,60 +173,55 @@ impl TestRunner {
         drop(input_reader);
         drop(stdin); // NOTE: this line is essential
 
-        let (res, start_at) = {
-            let fut_stdout = tokio::io::copy(&mut stdout, &mut stdout_buf);
-            let fut_stderr = tokio::io::copy(&mut stderr, &mut stderr_buf);
-            let fut_exit_status = proc.wait();
-
-            let start_at = tokio::time::Instant::now();
-
-            let res = tokio::time::timeout(self.execution_time_limit, async {
-                tokio::try_join!(fut_stdout, fut_stderr, fut_exit_status)
-                    .context("Failed to communicate with subprocess")
-            })
-            .await;
-            (res, start_at)
-        };
-
+        let start_at = tokio::time::Instant::now();
+        let wait_result = tokio::time::timeout(self.execution_time_limit, proc.wait()).await;
         let execution_time = tokio::time::Instant::now().duration_since(start_at);
 
-        let (judge, output) = match res {
+        let (is_timeout, exit_code) = match wait_result {
+            Ok(Ok(status)) => (false, status.code()),
+            Ok(Err(e)) => panic!("Failed to wait for child process to exit: {}", e),
             Err(_) => {
                 proc.kill()
                     .await
                     .unwrap_or_else(|e| log::warn!("Failed to kill TLE process: {:#}", e));
-                (JudgeCode::TLE, None)
+                (true, None)
             }
+        };
 
-            Ok(Err(e)) => bail!(e), // error on communicating with subprocess (io::copy)
+        stdout
+            .read_buf(&mut stdout_buf)
+            .await
+            .expect("Failed to capture stdout");
+        stderr
+            .read_buf(&mut stderr_buf)
+            .await
+            .expect("Failed to capture stderr");
 
-            Ok(Ok((_, _, exit_status))) => {
-                let judge = if !exit_status.success() {
-                    JudgeCode::RE
-                } else {
-                    let mut groundtruth = Vec::new();
-                    tokio::io::copy(&mut groundtruth_reader, &mut groundtruth)
-                        .await
-                        .context("Failed to read groundtruth data")?;
-                    if stdout_buf == groundtruth {
-                        JudgeCode::AC
-                    } else {
-                        JudgeCode::WA
-                    }
-                };
-                let output = ProcessOutput {
-                    status: exit_status.code(),
-                    stdout: String::from_utf8_lossy(&stdout_buf).into(),
-                    stderr: String::from_utf8_lossy(&stderr_buf).into(),
-                };
-                (judge, Some(output))
-            }
+        fut_groundtruth_read.await?;
+
+        let groundtruth = String::from_utf8_lossy(&groundtrugh_buf).to_string();
+        let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
+        let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
+
+        let judge = if is_timeout {
+            JudgeCode::TLE
+        } else if exit_code != Some(0) {
+            JudgeCode::RE
+        } else if stdout != groundtruth {
+            JudgeCode::WA
+        } else {
+            JudgeCode::AC
         };
 
         Ok(TestOutcome {
             judge,
             execution_time,
-            output,
+            groundtruth,
+            output: ProcessOutput {
+                status: exit_code,
+                stdout,
+                stderr,
+            },
         })
     }
 }
@@ -232,8 +235,10 @@ mod test {
         groundtruth: &'static str,
         pyscript: &'static str,
         want_judge: JudgeCode,
-        want_output: Option<ProcessOutput>,
+        want_output: ProcessOutput,
     }
+    const STDERR_CAPTURE_MAX_BYTES: usize = 64;
+    const STDOUT_CAPTURE_MAX_BYTES: usize = 256;
 
     async fn run_test(x: X) -> () {
         let cmd = TestCommand {
@@ -244,7 +249,11 @@ mod test {
         let t = OnMemoryTestcase::<&'static str>::new("sample testcase", x.input, x.groundtruth);
         let r = TestRunner::new(cmd).execution_time_limit(Duration::from_millis(300));
 
-        let res = dbg!(r.run(&t).await).unwrap();
+        let res = dbg!(
+            r.run(&t, STDOUT_CAPTURE_MAX_BYTES, STDERR_CAPTURE_MAX_BYTES)
+                .await
+        )
+        .unwrap();
         assert_eq!(res.judge, x.want_judge);
         assert_eq!(res.output, x.want_output);
     }
@@ -256,11 +265,11 @@ mod test {
             groundtruth: "hello_123\n",
             pyscript: r#"print("hello_" + input())"#,
             want_judge: JudgeCode::AC,
-            want_output: Some(ProcessOutput {
+            want_output: ProcessOutput {
                 status: Some(0),
                 stdout: "hello_123\n".into(),
                 stderr: "".into(),
-            }),
+            },
         })
         .await;
     }
@@ -272,11 +281,11 @@ mod test {
             groundtruth: "hello_123\n",
             pyscript: r#"print("hello_123")"#,
             want_judge: JudgeCode::AC,
-            want_output: Some(ProcessOutput {
+            want_output: ProcessOutput {
                 status: Some(0),
                 stdout: "hello_123\n".into(),
                 stderr: "".into(),
-            }),
+            },
         })
         .await;
     }
@@ -288,11 +297,11 @@ mod test {
             groundtruth: "hello_123\n",
             pyscript: r#"import sys; print("hello_123", file=sys.stderr)"#,
             want_judge: JudgeCode::WA,
-            want_output: Some(ProcessOutput {
+            want_output: ProcessOutput {
                 status: Some(0),
                 stdout: "".into(),
                 stderr: "hello_123\n".into(),
-            }),
+            },
         })
         .await;
     }
@@ -304,11 +313,11 @@ mod test {
             groundtruth: "hello_123\n",
             pyscript: r#"print("hello_123", end='')"#,
             want_judge: JudgeCode::WA,
-            want_output: Some(ProcessOutput {
+            want_output: ProcessOutput {
                 status: Some(0),
                 stdout: "hello_123".into(),
                 stderr: "".into(),
-            }),
+            },
         })
         .await;
     }
@@ -320,11 +329,11 @@ mod test {
             groundtruth: "hello_123\n",
             pyscript: r#"print("hello_123"); exit(42)"#,
             want_judge: JudgeCode::RE,
-            want_output: Some(ProcessOutput {
+            want_output: ProcessOutput {
                 status: Some(42),
                 stdout: "hello_123\n".into(),
                 stderr: "".into(),
-            }),
+            },
         })
         .await;
     }
@@ -334,9 +343,38 @@ mod test {
         run_test(X {
             input: "123\n",
             groundtruth: "hello_123\n",
-            pyscript: "import time; time.sleep(0.5)",
+            pyscript: "\
+import sys, time
+print('hello', flush=True)
+print('world', file=sys.stderr)
+time.sleep(0.5)",
             want_judge: JudgeCode::TLE,
-            want_output: None,
+            want_output: ProcessOutput {
+                status: None,
+                stdout: "hello\n".into(),
+                stderr: "world\n".into(),
+            },
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn should_be_tle_and_massive_output_should_not_exceed_capture_limit() {
+        run_test(X {
+            input: "123\n",
+            groundtruth: "hello_123\n",
+            pyscript: "\
+import sys
+while True:
+    print('hello')
+    print('world', file=sys.stderr)
+",
+            want_judge: JudgeCode::TLE,
+            want_output: ProcessOutput {
+                status: None,
+                stdout: "hello\n".repeat(100)[..STDOUT_CAPTURE_MAX_BYTES].into(),
+                stderr: "world\n".repeat(100)[..STDERR_CAPTURE_MAX_BYTES].into(),
+            },
         })
         .await;
     }

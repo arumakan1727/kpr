@@ -242,8 +242,6 @@ pub async fn do_test(
         runner.compile().await?;
     }
 
-    log::info!("Running: {}", runner.get_command().run);
-
     let style = ProgressStyle::default_bar()
         .template("{spinner} {msg}")
         .unwrap();
@@ -251,6 +249,8 @@ pub async fn do_test(
     let mut results = Vec::with_capacity(testcases.len());
     let mut bars = Vec::with_capacity(testcases.len());
     let progress_bar_container = MultiProgress::new();
+
+    log::info!("Running: {}", runner.get_command().run);
 
     // Prepare progress bar
     for t in &testcases {
@@ -275,7 +275,13 @@ pub async fn do_test(
     }
 
     for (t, bar) in testcases.iter().zip(&bars) {
-        let res = runner.run(t).await?;
+        let res = runner
+            .run(
+                t,
+                cfg.stdout_capture_max_bytes,
+                cfg.stderr_capture_max_bytes,
+            )
+            .await?;
         bar.lock().await.finish_with_message({
             format!(
                 "Testcase {} ... {}{} [{}ms]",
@@ -295,16 +301,16 @@ pub async fn do_test(
     Ok(results)
 }
 
-fn print_test_result_summary(res: &[TestOutcome]) {
+fn print_test_result_summary(results: &[TestOutcome]) {
     let bar = "-".repeat(5);
     print!("{} ", bar);
 
-    let count: HashMap<JudgeCode, usize> = res.iter().fold(HashMap::new(), |mut count, r| {
+    let count: HashMap<JudgeCode, usize> = results.iter().fold(HashMap::new(), |mut count, r| {
         *count.entry(r.judge).or_default() += 1;
         count
     });
 
-    let num_total_test = res.len();
+    let num_total_test = results.len();
     let num_passed = *count.get(&JudgeCode::AC).unwrap_or(&0);
     let num_failed = num_total_test - num_passed;
 
