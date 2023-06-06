@@ -1,5 +1,5 @@
 use chrono::Local;
-use kpr_core::{action, client::SessionPersistentClient, storage::Repository, print_success};
+use kpr_core::{action, client::SessionPersistentClient, print_success, storage::Repository};
 
 use super::{GlobalArgs, SubcmdResult};
 use crate::{config::GlobalConfig, util};

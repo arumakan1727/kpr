@@ -4,6 +4,7 @@ pub mod init;
 pub mod langs;
 pub mod login;
 pub mod logout;
+pub mod root;
 pub mod shojin;
 pub mod submit;
 pub mod test;
@@ -29,6 +30,7 @@ pub enum Subcommand {
     Shojin(shojin::Args),
     Contest(contest::Args),
     Langs(langs::Args),
+    Root(root::Args),
 
     #[command(alias("t"))]
     Test(test::Args),
@@ -52,6 +54,7 @@ impl GlobalArgs {
             Langs(args) => langs::exec(args, self).await,
             Test(args) => test::exec(args, self).await,
             Submit(args) => submit::exec(args, self).await,
+            Root(args) => root::exec(args, self),
         }
     }
 }
