@@ -27,12 +27,7 @@ fn init_logger() {
                 .as_str()
                 .map(|s| s.color(c))
                 .unwrap_or_else(|| msg.to_string().color(c));
-            let s = format!(
-                "[{}] {}: {}",
-                r.level().as_str().bold().color(c),
-                r.target(),
-                a,
-            );
+            let s = format!("[{}] {}", r.level().as_str().bold().color(c), a);
             writeln!(f, "{}", s)
         })
         .parse_default_env()
