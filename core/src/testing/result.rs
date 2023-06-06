@@ -9,6 +9,7 @@ pub struct ProcessOutput {
 
 #[derive(Debug, Clone)]
 pub struct TestOutcome {
+    pub testcase_name: String,
     pub judge: JudgeCode,
     pub execution_time: Duration,
     pub groundtruth: String,

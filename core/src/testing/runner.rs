@@ -214,6 +214,7 @@ impl TestRunner {
         };
 
         Ok(TestOutcome {
+            testcase_name: testcase.name().to_owned(),
             judge,
             execution_time,
             groundtruth,

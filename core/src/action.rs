@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Local};
-use colored::Colorize;
+use colored::{Color, Colorize};
+use crossterm::terminal;
 use error::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use kpr_webclient::problem_id::ProblemGlobalId;
@@ -295,8 +296,13 @@ pub async fn do_test(
         });
         results.push(res);
     }
+    print!("\n");
 
-    print!("\n\n");
+    results
+        .iter()
+        .filter(|x| x.judge != JudgeCode::AC)
+        .for_each(print_test_result_detail);
+
     print_test_result_summary(&results);
     Ok(results)
 }
@@ -342,6 +348,75 @@ fn print_test_result_summary(results: &[TestOutcome]) {
     }
 
     println!(" {}", bar);
+}
+
+pub fn print_test_result_detail(res: &TestOutcome) {
+    let stdout_lines: Vec<_> = res.output.stdout.lines().collect();
+    let truth_lines: Vec<_> = res.groundtruth.lines().collect();
+
+    let (cols, _) = terminal::size().unwrap_or((40, 40));
+
+    const BOLD_LINE: &str = "━";
+    const THIN_LINE: &str = "─";
+
+    let bold_bar = BOLD_LINE.repeat(cols as usize).blue().bold();
+
+    let title_color = Color::BrightYellow;
+    println!(
+        "\n{}: {} [{}ms]\n{}",
+        res.testcase_name.color(title_color).bold(),
+        style::judge_icon(res.judge),
+        res.execution_time.as_millis(),
+        bold_bar,
+    );
+
+    fn print_sub_title(s: &str, cols: usize) {
+        println!(
+            "{}{}",
+            s.cyan().bold(),
+            THIN_LINE.repeat(cols - s.len() - 1).bright_black(),
+        )
+    }
+
+    fn print_lines(lines: &[&str], entire_str: &str) {
+        if lines.is_empty() {
+            println!("{}", "<EMPTY>".magenta().dimmed());
+            return;
+        }
+        for (i, line) in lines.iter().enumerate() {
+            let trimmed = line.trim_end();
+            print!("{}", trimmed);
+
+            let num_trailling_whitespace = line.len() - trimmed.len();
+            if num_trailling_whitespace > 0 {
+                print!(
+                    "{}{}",
+                    " ".repeat(num_trailling_whitespace).on_red(),
+                    "(Trailling whitespace)".bright_red().bold()
+                );
+            }
+
+            let is_last_line = i + 1 == lines.len();
+            if is_last_line && !entire_str.ends_with("\n") {
+                print!("{}", " Missing new line ".on_yellow().black().bold());
+            }
+
+            println!("");
+        }
+    }
+
+    print_sub_title("[truth-answer]", cols as usize);
+    print_lines(&truth_lines, &res.groundtruth);
+
+    print_sub_title("[stdout]", cols as usize);
+    print_lines(&stdout_lines, &res.output.stdout);
+
+    if !res.output.stderr.is_empty() {
+        print_sub_title("[stderr]", cols as usize);
+        print!("{}", res.output.stderr);
+    }
+
+    println!("{}", bold_bar);
 }
 
 pub async fn submit(
