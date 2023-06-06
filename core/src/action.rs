@@ -3,13 +3,18 @@ pub mod error {
     pub(crate) use anyhow::{anyhow, bail, ensure, Context as _};
     pub use anyhow::{Error, Result};
 }
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Local};
+use colored::Colorize;
 use error::*;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use kpr_webclient::problem_id::ProblemGlobalId;
 use kpr_webclient::{PgLang, ProblemInfo, SampleTestcase, Url};
+use tokio::sync::Mutex;
 
 use crate::client::SessionPersistentClient;
 use crate::config::{SubmissionConfig, TestConfig};
@@ -17,6 +22,7 @@ use crate::interactive::ask_credential;
 use crate::storage::{
     workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
 };
+use crate::style;
 use crate::testing::{AsyncTestcase, FsTestcase, JudgeCode, TestOutcome, TestRunner};
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -231,32 +237,105 @@ pub async fn do_test(
 
     if cfg.compile_before_run && runner.is_compile_cmd_defined() {
         let cmd = runner.get_command().compile.as_ref().unwrap();
-        println!("Compiling {}\n{}", filename, cmd);
+        log::info!("Compiling {}", filename);
+        log::info!("{}", cmd);
         runner.compile().await?;
     }
 
-    println!("Run command: {}", runner.get_command().run);
+    log::info!("Running: {}", runner.get_command().run);
+
+    let style = ProgressStyle::default_bar()
+        .template("{spinner} {msg}")
+        .unwrap();
 
     let mut results = Vec::with_capacity(testcases.len());
+    let mut bars = Vec::with_capacity(testcases.len());
+    let progress_bar_container = MultiProgress::new();
+
+    // Prepare progress bar
     for t in &testcases {
-        print!("Running testcase {} ... ", t.name());
+        let bar = progress_bar_container
+            .add(ProgressBar::new(100))
+            .with_style(style.clone())
+            .with_message(format!("Testcase {} ...", t.name()));
+        let bar = Arc::new(Mutex::new(bar));
+        bars.push(bar.clone());
 
+        // Tick spinner
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                let bar = bar.lock().await;
+                if bar.is_finished() {
+                    break;
+                }
+                bar.tick();
+            }
+        });
+    }
+
+    for (t, bar) in testcases.iter().zip(&bars) {
         let res = runner.run(t).await?;
-        println!("{} {:?}", res.judge, res.execution_time);
-
-        if res.judge != JudgeCode::AC && res.output.is_some() {
-            let o = res.output.as_ref().unwrap();
-            let bold_line = "=".repeat(50);
-            let dash_line = " -".repeat(10);
-            println!("{}", bold_line);
-            println!("{} stdout{}\n{}", dash_line, dash_line, o.stdout);
-            println!("{} stderr{}\n{}", dash_line, dash_line, o.stderr);
-            println!("{}", bold_line);
-        }
-
+        bar.lock().await.finish_with_message({
+            format!(
+                "Testcase {} ... {}{} [{}ms]",
+                t.name(),
+                style::judge_icon(res.judge),
+                " ".repeat(3 - res.judge.to_string().len()),
+                res.execution_time.as_millis(),
+            )
+            .cyan()
+            .to_string()
+        });
         results.push(res);
     }
+
+    print!("\n\n");
+    print_test_result_summary(&results);
     Ok(results)
+}
+
+fn print_test_result_summary(res: &[TestOutcome]) {
+    let bar = "-".repeat(5);
+    print!("{} ", bar);
+
+    let count: HashMap<JudgeCode, usize> = res.iter().fold(HashMap::new(), |mut count, r| {
+        *count.entry(r.judge).or_default() += 1;
+        count
+    });
+
+    let num_total_test = res.len();
+    let num_passed = *count.get(&JudgeCode::AC).unwrap_or(&0);
+    let num_failed = num_total_test - num_passed;
+
+    if num_passed == num_total_test {
+        let msg = format!("All {} tests passed ✨", num_total_test);
+        print!("{}", msg.green());
+    } else {
+        let summary_msg = if num_passed > 0 {
+            format!("{}/{} tests failed 💣", num_failed, num_total_test)
+        } else {
+            format!("All {} tests failed 💀", num_total_test)
+        };
+
+        let detail_msg = count
+            .iter()
+            .filter(|(&judge, _)| judge != JudgeCode::AC)
+            .map(|(&judge, &cnt)| {
+                format!(
+                    "{}{}{}",
+                    style::judge_icon(judge),
+                    "x".dimmed(),
+                    cnt.to_string().bold().bright_white(),
+                )
+            })
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        print!("{} ({})", summary_msg.bright_red(), detail_msg);
+    }
+
+    println!(" {}", bar);
 }
 
 pub async fn submit(
