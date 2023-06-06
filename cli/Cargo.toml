@@ -27,6 +27,7 @@ colored = { workspace = true }
 dirs = { workspace = true }
 env_logger = { workspace = true }
 envy = { workspace = true }
+indicatif = { workspace = true }
 lazy-regex = { workspace = true }
 log = { workspace = true }
 once_cell = { workspace = true }

@@ -1,4 +1,4 @@
-use kpr_core::{action, client::SessionPersistentClient};
+use kpr_core::{action, client::SessionPersistentClient, print_success};
 
 use super::{ArgPlatform, GlobalArgs, SubcmdResult};
 use crate::config::GlobalConfig;
@@ -16,6 +16,6 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let mut cli = SessionPersistentClient::new(platform, &cfg.cache_dir);
 
     action::login(&mut cli).await?;
-    println!("Successfully logged in to {}", platform);
+    print_success!("Successfully logged in to {}", platform);
     Ok(())
 }

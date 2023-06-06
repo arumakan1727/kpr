@@ -1,5 +1,5 @@
 use chrono::Local;
-use kpr_core::{action, client::SessionPersistentClient, storage::Repository};
+use kpr_core::{action, client::SessionPersistentClient, storage::Repository, print_success};
 
 use super::{GlobalArgs, SubcmdResult};
 use crate::{config::GlobalConfig, util};
@@ -19,6 +19,6 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     let saved_locs = action::create_contest_workspace(&cli, &url, &repo, Local::now()).await?;
 
-    println!("Successfully created {} workspaces.", saved_locs.len());
+    print_success!("Successfully created {} workspaces.", saved_locs.len());
     Ok(())
 }

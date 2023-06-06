@@ -12,7 +12,7 @@ async fn main() {
 
     let app = GlobalArgs::parse();
     app.exec_subcmd().await.unwrap_or_else(|e| {
-        eprintln!("Error: {:?}", e);
+        eprintln!("{}: {}", "Error".red(), format!("{:?}", e).bright_red());
         std::process::exit(1);
     });
 }
