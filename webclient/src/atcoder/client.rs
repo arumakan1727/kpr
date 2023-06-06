@@ -3,6 +3,8 @@ use ::chrono::DateTime;
 use ::cookie::Cookie;
 use ::reqwest::cookie::{CookieStore as _, Jar};
 use ::std::{collections::HashMap, sync::Arc, time::Duration};
+use chrono::TimeZone;
+use serde::Deserialize;
 
 use super::{auth::AuthCookie, helper, urls::*};
 use crate::{
@@ -25,6 +27,30 @@ macro_rules! ensure {
     };
 }
 
+//---------------------------------------------------------
+// Virtual Contest Data on AtCoderProblems
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ProblemsVirtualContest {
+    pub info: ProblemsVirtualContestInfo,
+    pub problems: Vec<ProblemsVirtualContestProblem>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ProblemsVirtualContestInfo {
+    pub id: String,
+    pub title: String,
+    pub duration_second: i64,
+    pub start_epoch_second: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ProblemsVirtualContestProblem {
+    pub id: String,
+    pub order: u32,
+}
+
+//---------------------------------------------------------
+
 pub struct AtCoderClient {
     http: reqwest::Client,
     jar: Arc<Jar>,
@@ -40,6 +66,7 @@ impl AtCoderClient {
                 .cookie_store(true)
                 .cookie_provider(jar.clone())
                 .redirect(reqwest::redirect::Policy::none())
+                .gzip(true)
                 .build()
                 .unwrap(),
             jar,
@@ -81,27 +108,8 @@ impl AtCoderClient {
         let cookie = format!("{}=", COOKIE_KEY_SESSION_ID);
         self.jar.add_cookie_str(&cookie, &TOP_URL);
     }
-}
 
-#[async_trait]
-impl Client for AtCoderClient {
-    fn platform(&self) -> Platform {
-        Platform::AtCoder
-    }
-
-    fn is_contest_home_url(&self, url: &Url) -> bool {
-        AtCoderUrlAnalyzer::is_contest_home_url(url)
-    }
-
-    fn is_problem_url(&self, url: &Url) -> bool {
-        AtCoderUrlAnalyzer::is_problem_url(url)
-    }
-
-    fn extract_problem_id(&self, url: &Url) -> problem_id::Result<ProblemId> {
-        AtCoderUrlAnalyzer::extract_problem_id(url)
-    }
-
-    async fn fetch_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
+    async fn fetch_atcoder_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {
         let tasks_en_url = {
             let mut url = contest_url.clone();
             url.set_path(&format!(
@@ -146,13 +154,11 @@ impl Client for AtCoderClient {
                     Ok(ContestProblemOutline {
                         url,
                         ord: (i + 1) as u32,
-                        title: title_el.first_text(&sel_title)?.trim().to_owned(),
                     })
                 })
                 .collect();
             res?
         };
-
         Ok(ContestInfo {
             url: contest_url.to_owned(),
             short_title,
@@ -161,6 +167,86 @@ impl Client for AtCoderClient {
             start_at,
             end_at,
         })
+    }
+
+    pub async fn fetch_problems_virtual_contest_info(&self, url: &Url) -> Result<ContestInfo> {
+        let Some(caps) = RE_PROBLEMS_VIRTUAL_CONTEST_URL_FRAGMENT.captures(url.fragment().unwrap_or("")) else {
+            return Err(Error::NotContestUrl(url.to_owned()));
+        };
+        let contest_id = &caps[1];
+        let api_url = format!(
+            "https://{}/atcoder/internal-api/contest/get/{}",
+            DOMAIN_KENKOOOO, contest_id
+        );
+
+        let contest: ProblemsVirtualContest =
+            util::fetch_json_with_parse_url(&self.http, &api_url).await?;
+
+        let short_title = format!("problems-{}", &contest_id[..8]);
+        let long_title = contest.info.title;
+
+        let start_at = {
+            let nano_secs = 0;
+            chrono::Local
+                .timestamp_opt(contest.info.start_epoch_second, nano_secs)
+                .unwrap()
+        };
+        let end_at = start_at + chrono::Duration::seconds(contest.info.duration_second);
+
+        let problems: Vec<_> = contest
+            .problems
+            .iter()
+            .enumerate()
+            .map(|(i, x)| {
+                let ord = i as u32 + 1;
+                // "abc001_a" => "abc001"
+                let contest_name = x.id.rsplit_once('_').unwrap().0;
+                let url = util::complete_url(
+                    format!("/contests/{}/tasks/{}", contest_name, x.id),
+                    DOMAIN,
+                )
+                .unwrap();
+                ContestProblemOutline { url, ord }
+            })
+            .collect();
+
+        Ok(ContestInfo {
+            url: url.to_owned(),
+            short_title,
+            long_title,
+            problems,
+            start_at,
+            end_at,
+        })
+    }
+}
+
+#[async_trait]
+impl Client for AtCoderClient {
+    fn platform(&self) -> Platform {
+        Platform::AtCoder
+    }
+
+    fn is_contest_home_url(&self, url: &Url) -> bool {
+        AtCoderUrlAnalyzer::is_contest_home_url(url)
+    }
+
+    fn is_problem_url(&self, url: &Url) -> bool {
+        AtCoderUrlAnalyzer::is_problem_url(url)
+    }
+
+    fn extract_problem_id(&self, url: &Url) -> problem_id::Result<ProblemId> {
+        AtCoderUrlAnalyzer::extract_problem_id(url)
+    }
+
+    async fn fetch_contest_info(&self, url: &Url) -> Result<ContestInfo> {
+        if AtCoderUrlAnalyzer::is_atcoder_contest_home_url(url) {
+            self.fetch_atcoder_contest_info(url).await
+        } else if AtCoderUrlAnalyzer::is_problems_virtual_contest_url(url) {
+            self.fetch_problems_virtual_contest_info(url).await
+        } else {
+            Err(Error::NotContestUrl(url.to_owned()))
+        }
     }
 
     async fn fetch_problem_detail(

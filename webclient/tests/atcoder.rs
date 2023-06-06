@@ -36,6 +36,11 @@ fn should_be_contest_home_url() {
         "https://atcoder.jp/contests/abc001/?lang=ja"
     ));
     assert!(is_contest_url("https://atcoder.jp/contests/abc001/?hoge"));
+
+    // virtual contest
+    assert!(is_contest_url(
+        "https://kenkoooo.com/atcoder/#/contest/show/10f53d61-58e1-411e-9bfe-5fd0690a31f7"
+    ));
 }
 
 #[test]
@@ -199,25 +204,90 @@ async fn fetch_abc001_info() {
             ContestProblemOutline {
                 url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_1").unwrap(),
                 ord: 1,
-                title: "積雪深差".to_owned(),
             },
             ContestProblemOutline {
                 url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_2").unwrap(),
                 ord: 2,
-                title: "視程の通報".to_owned(),
             },
             ContestProblemOutline {
                 url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_3").unwrap(),
                 ord: 3,
-                title: "風力観測".to_owned(),
             },
             ContestProblemOutline {
                 url: Url::parse("https://atcoder.jp/contests/abc001/tasks/abc001_4").unwrap(),
                 ord: 4,
-                title: "感雨時刻の整理".to_owned(),
             },
         ]
     )
+}
+
+#[tokio::test]
+async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
+    // Avoid Dos attack
+    sleep_random_ms();
+
+    let url = Url::parse(
+        "https://kenkoooo.com/atcoder/#/contest/show/10f53d61-58e1-411e-9bfe-5fd0690a31f7",
+    )
+    .unwrap();
+    let cli = AtCoderClient::new();
+    let info = cli.fetch_contest_info(&url).await.unwrap();
+
+    assert_eq!(info.url, url);
+    assert_eq!(info.short_title, "problems-10f53d61");
+    assert_eq!(info.long_title, "あさかつ6/8");
+    assert_eq!(
+        info.start_at,
+        Local.with_ymd_and_hms(2023, 6, 8, 7, 30, 0).unwrap()
+    );
+    assert_eq!(
+        info.end_at,
+        Local.with_ymd_and_hms(2023, 6, 8, 8, 30, 0).unwrap()
+    );
+    assert_eq!(info.problems.len(), 6);
+
+    assert_eq!(
+        info.problems[0],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/abc183/tasks/abc183_b").unwrap(),
+            ord: 1,
+        },
+    );
+    assert_eq!(
+        info.problems[1],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/tenka1_2017/tasks/tenka1_2017_b").unwrap(),
+            ord: 2,
+        },
+    );
+    assert_eq!(
+        info.problems[2],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/abc253/tasks/abc253_c").unwrap(),
+            ord: 3,
+        },
+    );
+    assert_eq!(
+        info.problems[3],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/arc051/tasks/arc051_b").unwrap(),
+            ord: 4,
+        },
+    );
+    assert_eq!(
+        info.problems[4],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/arc062/tasks/arc062_a").unwrap(),
+            ord: 5,
+        },
+    );
+    assert_eq!(
+        info.problems[5],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/agc060/tasks/agc060_b").unwrap(),
+            ord: 6,
+        },
+    );
 }
 
 #[tokio::test]

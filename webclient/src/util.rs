@@ -1,14 +1,15 @@
 use reqwest::{Client, Response, StatusCode};
 use scraper::{node::Element, ElementRef, Html, Selector};
+use serde::de;
 use url::Url;
 
 use crate::error::*;
 
 /// Complete given link into fully qualified URL removing trailling slash.
-pub fn complete_url(link: &str, host: &str) -> Result<Url> {
-    let link = link.trim_end_matches("/");
+pub fn complete_url(link: impl AsRef<str>, host: impl AsRef<str>) -> Result<Url> {
+    let link = link.as_ref().trim_end_matches("/");
     if link.starts_with("/") {
-        self::parse_url(format!("https://{}{}", host, link))
+        self::parse_url(format!("https://{}{}", host.as_ref(), link))
     } else {
         assert!(link.starts_with("https://"));
         self::parse_url(link)
@@ -59,11 +60,15 @@ pub async fn fetch_html_with_parse_url(c: &Client, url: impl AsRef<str>) -> Resu
     self::fetch_html(c, url).await
 }
 
-pub fn selector_must_parsed(sel: &'static str) -> Selector {
-    Selector::parse(sel).expect("Failed to parse  `&'static str`  selector")
+pub async fn fetch_json_with_parse_url<T>(c: &Client, url: impl AsRef<str>) -> Result<T>
+where
+    T: de::DeserializeOwned,
+{
+    let url = self::parse_url(url)?;
+    self::fetch_json(c, url).await
 }
 
-pub async fn fetch_html(c: &Client, url: Url) -> Result<Html> {
+pub async fn fetch_text(c: &Client, url: Url) -> Result<String> {
     let url_str = url.to_string();
     let resp = c.get(url).send().await?;
 
@@ -75,9 +80,25 @@ pub async fn fetch_html(c: &Client, url: Url) -> Result<Html> {
             requested_url: url_str,
         });
     }
+    let s = resp.text().await?;
+    Ok(s)
+}
 
-    let html = resp.text().await?;
+pub async fn fetch_html(c: &Client, url: Url) -> Result<Html> {
+    let html = self::fetch_text(c, url).await?;
     Ok(Html::parse_document(&html))
+}
+
+pub async fn fetch_json<T>(c: &Client, url: Url) -> Result<T>
+where
+    T: de::DeserializeOwned,
+{
+    let json = self::fetch_text(c, url).await?;
+    serde_json::from_str(&json).map_err(|e| Error::Json(e))
+}
+
+pub fn selector_must_parsed(sel: &'static str) -> Selector {
+    Selector::parse(sel).expect("Failed to parse  `&'static str`  selector")
 }
 
 pub trait DocExt {
