@@ -15,7 +15,7 @@ use self::error::*;
 use crate::{
     client::SessionPersistentClient,
     config::{SubmissionConfig, TestConfig},
-    interactive::{self, ask_credential},
+    interactive::{ask_credential, SpinnerExt as _},
     storage::{
         workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
     },
@@ -240,8 +240,8 @@ pub async fn do_test_with_runner(
         let bar = progress_bar_container
             .add(ProgressBar::new(100))
             .with_style(style.clone())
-            .with_message(format!("Testcase {} ...", t.name()));
-        let bar = interactive::tick_spinner(bar);
+            .with_message(format!("Testcase {} ...", t.name()))
+            .with_ticking();
         bars.push(bar);
     }
 
