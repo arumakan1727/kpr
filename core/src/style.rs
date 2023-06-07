@@ -7,7 +7,7 @@ use crate::testing::{JudgeCode, TestOutcome};
 
 #[macro_export]
 macro_rules! print_success {
-    ($fmt:literal, $($e:expr),*) => {
+    ($fmt:literal, $($e:tt)*) => {
         use ::colored::Colorize as _;
         println!("{}", format!($fmt, $($e)*).green())
     }

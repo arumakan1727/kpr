@@ -18,7 +18,13 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
     let saved_locs = action::create_contest_workspace(&cli, &url, &repo, Local::now()).await?;
+    let saved_dir = saved_locs[0].dir().parent().unwrap();
+    let saved_dir = fsutil::relative_path(util::current_dir(), saved_dir).unwrap();
 
-    print_success!("Successfully created {} workspaces.", saved_locs.len());
+    print_success!(
+        "Successfully created {} workspaces in {:?} ✨",
+        saved_locs.len(),
+        saved_dir,
+    );
     Ok(())
 }
