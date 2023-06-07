@@ -42,18 +42,24 @@ pub fn ask_credential(fields: &[CredFieldMeta]) -> CredMap {
     map
 }
 
-pub fn tick_spinner(bar: ProgressBar) -> Arc<Mutex<ProgressBar>> {
-    let mutex_bar = Arc::new(Mutex::new(bar));
-    let bar = mutex_bar.clone();
-    tokio::spawn(async move {
-        loop {
-            tokio::time::sleep(Duration::from_millis(30)).await;
-            let bar = bar.lock().await;
-            if bar.is_finished() {
-                break;
+pub trait SpinnerExt {
+    fn with_ticking(self) -> Arc<Mutex<Self>>;
+}
+
+impl SpinnerExt for ProgressBar {
+    fn with_ticking(self) -> Arc<Mutex<Self>> {
+        let mutex_spinner = Arc::new(Mutex::new(self));
+        let spinner = mutex_spinner.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(30)).await;
+                let spinner = spinner.lock().await;
+                if spinner.is_finished() {
+                    break;
+                }
+                spinner.tick();
             }
-            bar.tick();
-        }
-    });
-    mutex_bar
+        });
+        mutex_spinner
+    }
 }
