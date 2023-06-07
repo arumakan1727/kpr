@@ -1,5 +1,7 @@
 use chrono::Local;
-use kpr_core::{action, client::SessionPersistentClient, print_success, storage::Repository};
+use kpr_core::{
+    action, client::SessionPersistentClient, print_success, storage::Repository, style,
+};
 
 use super::{GlobalArgs, SubcmdResult};
 use crate::{config::GlobalConfig, util};
@@ -17,14 +19,20 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
-    let saved_locs = action::create_contest_workspace(&cli, &url, &repo, Local::now()).await?;
-    let saved_dir = saved_locs[0].dir().parent().unwrap();
+    let res = action::create_contest_workspace(&cli, &url, &repo, Local::now()).await?;
+    let saved_dir = res[0].0.dir().parent().unwrap();
     let saved_dir = fsutil::relative_path(util::current_dir(), saved_dir).unwrap();
 
     print_success!(
         "Successfully created {} workspaces in {:?} ✨",
-        saved_locs.len(),
+        res.len(),
         saved_dir,
     );
+
+    let serial_code = style::contest_problem_serial_code_generator(res.len());
+    for (i, (_, info)) in res.iter().enumerate() {
+        println!(" [{}] {}", serial_code(1 + i as u32), info.problem_id);
+    }
+
     Ok(())
 }

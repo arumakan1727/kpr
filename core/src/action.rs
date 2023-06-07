@@ -161,7 +161,7 @@ pub async fn create_contest_workspace(
     contest_url: &Url,
     repo: &Repository,
     today: DateTime<Local>,
-) -> Result<Vec<ProblemWorkspace>> {
+) -> Result<Vec<(ProblemWorkspace, ProblemInfo)>> {
     ensure!(
         cli.is_contest_home_url(contest_url),
         "Not a contest url: {}",
@@ -184,13 +184,6 @@ pub async fn create_contest_workspace(
         spinner.finish_with_message("Fetching contest info ... Done");
     }
 
-    let serial_code = if contest.problems.len() <= 26 {
-        // 1 => "a",  2 => "b",  3 => "c", ...
-        |ord: u32| ((b'a' + (ord - 1) as u8) as char).to_string()
-    } else {
-        |ord: u32| format!("{:02}", ord)
-    };
-
     log::info!("Creating each problem workspace");
     let bars_container = MultiProgress::new();
     let progress_header = bars_container
@@ -207,6 +200,8 @@ pub async fn create_contest_workspace(
     let w = repo.workspace_home();
     let mut workspace_locations = Vec::new();
 
+    let serial_code = style::contest_problem_serial_code_generator(contest.problems.len());
+
     for problem in &contest.problems {
         let problem_id = cli.extract_problem_id(&problem.url).unwrap();
         {
@@ -222,7 +217,7 @@ pub async fn create_contest_workspace(
         progress_bar.inc(1);
         std::thread::sleep(Duration::from_millis(300));
 
-        let (vault_loc, _info) = self::ensure_problem_data_saved(cli, &problem.url, repo).await?;
+        let (vault_loc, info) = self::ensure_problem_data_saved(cli, &problem.url, repo).await?;
         progress_bar.inc(1);
         progress_header
             .lock()
@@ -240,7 +235,7 @@ pub async fn create_contest_workspace(
                 },
             )
             .context("Failed to create contest workspace")?;
-        workspace_locations.push(loc);
+        workspace_locations.push((loc, info));
         progress_bar.inc(1);
     }
     progress_bar.finish_and_clear();

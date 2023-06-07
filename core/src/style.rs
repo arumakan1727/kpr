@@ -93,6 +93,16 @@ pub fn judge_icon(judge: JudgeCode) -> ColoredString {
         .color(fg)
 }
 
+pub fn contest_problem_serial_code_generator(num_problems_in_contest: usize) -> fn(u32) -> String {
+    let serial_code = if num_problems_in_contest <= 26 {
+        // 1 => "a",  2 => "b",  3 => "c", ...
+        |ord: u32| ((b'a' + (ord - 1) as u8) as char).to_string()
+    } else {
+        |ord: u32| format!("{:02}", ord)
+    };
+    serial_code
+}
+
 pub fn print_test_result_summary(results: &[TestOutcome]) {
     let bar = "-".repeat(5);
     print!("{} ", bar);
