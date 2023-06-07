@@ -106,6 +106,13 @@ impl<'w> WorkspaceHome<'w> {
             workspace.problem_info_file(),
         )?;
         fsutil::symlink_using_relpath_with_mkdir(vault.testcase_dir(), workspace.testcase_dir())?;
+
+        let template_dir = template_dir.as_ref();
+        if !template_dir.is_dir() {
+            log::warn!("Template dir does not exist (path: {:?})", template_dir);
+            return Ok(workspace);
+        }
+
         fsutil::copy_contents_all(
             template_dir,
             workspace.dir(),
