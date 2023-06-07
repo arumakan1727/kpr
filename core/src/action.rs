@@ -167,10 +167,22 @@ pub async fn create_contest_workspace(
         "Not a contest url: {}",
         contest_url,
     );
+
+    let progress_spinner = ProgressBar::new(1)
+        .with_style(ProgressStyle::with_template(" {prefix} {spinner} {wide_msg}").unwrap())
+        .with_prefix("🔍")
+        .with_message("Fetching contest info ...")
+        .with_ticking();
+
     let contest = cli
         .fetch_contest_info(contest_url)
         .await
         .with_context(|| format!("Failed to fetch contest info (url={})", contest_url))?;
+    {
+        let spinner = progress_spinner.lock().await;
+        spinner.set_prefix("✅");
+        spinner.finish_with_message("Fetching contest info ... Done");
+    }
 
     let serial_code = if contest.problems.len() <= 26 {
         // 1 => "a",  2 => "b",  3 => "c", ...
@@ -179,14 +191,44 @@ pub async fn create_contest_workspace(
         |ord: u32| format!("{:02}", ord)
     };
 
+    log::info!("Creating each problem workspace");
+    let bars_container = MultiProgress::new();
+    let progress_header = bars_container
+        .add(ProgressBar::new(1))
+        .with_style(
+            ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg:.magenta.bold}")
+                .unwrap(),
+        )
+        .with_ticking();
+    let progress_bar = bars_container
+        .add(ProgressBar::new(contest.problems.len() as u64 * 3))
+        .with_style(ProgressStyle::with_template("{prefix:.bold.dim} {wide_bar}").unwrap());
+
     let w = repo.workspace_home();
     let mut workspace_locations = Vec::new();
 
     for problem in &contest.problems {
+        let problem_id = cli.extract_problem_id(&problem.url).unwrap();
+        {
+            let header = progress_header.lock().await;
+            let prefix = format!("[{}/{}]", problem.ord, contest.problems.len());
+            progress_bar.set_prefix(prefix.clone());
+            header.set_prefix(prefix);
+            header.set_message(format!("Fetching {}", problem_id));
+        }
+
         // Avoid Dos attack
-        std::thread::sleep(Duration::from_millis(200));
+        std::thread::sleep(Duration::from_millis(300));
+        progress_bar.inc(1);
+        std::thread::sleep(Duration::from_millis(300));
 
         let (vault_loc, _info) = self::ensure_problem_data_saved(cli, &problem.url, repo).await?;
+        progress_bar.inc(1);
+        progress_header
+            .lock()
+            .await
+            .set_message(format!("Creating workspace for {}", problem_id));
+
         let loc = w
             .create_workspace(
                 &vault_loc,
@@ -198,12 +240,11 @@ pub async fn create_contest_workspace(
                 },
             )
             .context("Failed to create contest workspace")?;
-        log::info!(
-            "Successfully created workspace {}",
-            loc.dir().to_string_lossy()
-        );
         workspace_locations.push(loc);
+        progress_bar.inc(1);
     }
+    progress_bar.finish_and_clear();
+    progress_header.lock().await.finish_and_clear();
     Ok(workspace_locations)
 }
 
