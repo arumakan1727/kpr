@@ -182,7 +182,7 @@ impl AtCoderClient {
         let contest: ProblemsVirtualContest =
             util::fetch_json_with_parse_url(&self.http, &api_url).await?;
 
-        let short_title = format!("problems-{}", &contest_id[..8]);
+        let short_title = format!("problems-bacha-{}", &contest_id[..8]);
         let long_title = contest.info.title;
 
         let start_at = {

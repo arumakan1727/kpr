@@ -14,7 +14,7 @@ use testconfig::TestConfig;
 
 fn sleep_random_ms() {
     let mut rng = rand::thread_rng();
-    let ms = Duration::from_millis(rng.gen_range(400..800));
+    let ms = Duration::from_millis(rng.gen_range(500..1000));
     thread::sleep(ms);
 }
 
@@ -234,7 +234,7 @@ async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
     let info = cli.fetch_contest_info(&url).await.unwrap();
 
     assert_eq!(info.url, url);
-    assert_eq!(info.short_title, "problems-10f53d61");
+    assert_eq!(info.short_title, "problems-bacha-10f53d61");
     assert_eq!(info.long_title, "あさかつ6/8");
     assert_eq!(
         info.start_at,
