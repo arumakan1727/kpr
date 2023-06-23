@@ -33,7 +33,7 @@ pub fn extract_302_location_header(
     Ok(bytes.to_str().unwrap().to_owned())
 }
 
-pub fn starts_with_anyone<'a, S, I, T>(s: S, prefixes: I) -> bool
+pub fn starts_with_oneof<'a, S, I, T>(s: S, prefixes: I) -> bool
 where
     S: AsRef<str>,
     I: IntoIterator<Item = &'a T>,

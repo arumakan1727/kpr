@@ -101,8 +101,7 @@ impl ProblemGlobalId {
 impl std::fmt::Display for ProblemGlobalId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let id = self.problem_id.as_str();
-        if self.platform == Platform::AtCoder
-            && util::starts_with_anyone(id, &["abc", "arc", "agc"])
+        if self.platform == Platform::AtCoder && util::starts_with_oneof(id, &["abc", "arc", "agc"])
         {
             return write!(f, "{}", id);
         }
