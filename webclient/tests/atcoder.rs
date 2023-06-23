@@ -33,6 +33,9 @@ fn should_be_contest_home_url() {
     assert!(is_contest_url("https://atcoder.jp/contests/abc001#a?x")); // fragment is 'a?x'
     assert!(is_contest_url("https://atcoder.jp/contests/abc001?lang=en"));
     assert!(is_contest_url(
+        "https://atcoder.jp/contests/tenka1-2012-qualB"
+    ));
+    assert!(is_contest_url(
         "https://atcoder.jp/contests/abc001/?lang=ja"
     ));
     assert!(is_contest_url("https://atcoder.jp/contests/abc001/?hoge"));
@@ -138,6 +141,9 @@ fn should_be_problem_url() {
     ));
     assert!(is_problem_url(
         "https://atcoder.jp/contests/abc001/tasks/typical90_a/?hoge"
+    ));
+    assert!(is_problem_url(
+        "https://atcoder.jp/contests/tenka1-2012-qualB/tasks/tenka1_2012_7"
     ));
 }
 
