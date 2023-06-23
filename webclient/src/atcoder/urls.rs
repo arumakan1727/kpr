@@ -1,9 +1,9 @@
 use crate::{problem_id, Platform, ProblemId, Url, UrlAnalyzer};
 use ::lazy_regex::{lazy_regex, Lazy, Regex};
 
-pub(super) static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([[:alnum:]]+)/?$");
+pub(super) static RE_CONTEST_URL_PATH: Lazy<Regex> = lazy_regex!(r"^/contests/([0-9A-Za-z_-]+)/?$");
 pub(super) static RE_PROBLEM_URL_PATH: Lazy<Regex> =
-    lazy_regex!(r"^/contests/([[:alnum:]]+)/tasks/(([[:alnum:]]+)_([[:alnum:]]+))/?$");
+    lazy_regex!(r"^/contests/([0-9A-Za-z_-]+)/tasks/(([0-9A-Za-z_-]+)_([[:alnum:]]+))/?$");
 
 pub(super) static RE_PROBLEMS_VIRTUAL_CONTEST_URL_FRAGMENT: Lazy<Regex> =
     lazy_regex!(r"^/contest/show/([a-zA-Z0-9-]+)");
