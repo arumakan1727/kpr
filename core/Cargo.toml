@@ -23,6 +23,7 @@ dialoguer = { workspace = true }
 glob = { workspace = true }
 indicatif = { workspace = true }
 log = { workspace = true }
+maplit = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
 rust-embed = { workspace = true }
