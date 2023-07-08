@@ -4,7 +4,7 @@ pub mod error {
     pub use anyhow::{Error, Result};
 }
 
-use std::{path::Path, time::Duration};
+use std::path::Path;
 
 use chrono::{DateTime, Local};
 use colored::Colorize;
@@ -207,8 +207,6 @@ pub async fn create_contest_workspace(
     let w = repo.workspace_home();
     let mut workspace_locations = Vec::new();
 
-    let serial_code = style::contest_problem_serial_code_generator(contest.problems.len());
-
     for problem in &contest.problems {
         let problem_id = cli.extract_problem_id(&problem.url).unwrap();
         {
@@ -233,7 +231,7 @@ pub async fn create_contest_workspace(
                 WorkspaceNameModifier {
                     today,
                     category: &contest.short_title,
-                    name: &serial_code(problem.ord),
+                    name: &problem.ord,
                 },
             )
             .context("Failed to create contest workspace")?;
