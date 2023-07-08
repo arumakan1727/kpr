@@ -1039,6 +1039,8 @@ dependencies = [
  "chrono",
  "cookie 0.17.0",
  "envy",
+ "glob",
+ "http",
  "lazy-regex",
  "log",
  "once_cell",

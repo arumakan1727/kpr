@@ -1,8 +1,8 @@
 use ::async_trait::async_trait;
 use ::chrono::DateTime;
 use ::cookie::Cookie;
-use ::reqwest::cookie::{CookieStore as _, Jar};
-use ::std::{collections::HashMap, sync::Arc, time::Duration};
+use ::reqwest::cookie::CookieStore as _;
+use ::std::{collections::HashMap, time::Duration};
 use chrono::TimeZone;
 use serde::Deserialize;
 
@@ -52,24 +52,28 @@ pub struct ProblemsVirtualContestProblem {
 //---------------------------------------------------------
 
 pub struct AtCoderClient {
-    http: reqwest::Client,
-    jar: Arc<Jar>,
+    http: crate::http::Client,
 }
 
 const COOKIE_KEY_SESSION_ID: &str = "REVEL_SESSION";
 
 impl AtCoderClient {
     pub fn new() -> Self {
-        let jar = Arc::new(Jar::default());
+        use ::glob::Pattern;
         Self {
-            http: reqwest::Client::builder()
-                .cookie_store(true)
-                .cookie_provider(jar.clone())
-                .redirect(reqwest::redirect::Policy::none())
-                .gzip(true)
-                .build()
-                .unwrap(),
-            jar,
+            http: crate::http::Client::new(
+                crate::http::redirect::Policy::none(),
+                [
+                    (
+                        Pattern::new("https://atcoder.jp*").unwrap(),
+                        Duration::from_millis(600),
+                    ),
+                    (
+                        Pattern::new("https://kenkoooo.com*").unwrap(),
+                        Duration::from_millis(200),
+                    ),
+                ],
+            ),
         }
     }
 
@@ -82,7 +86,7 @@ impl AtCoderClient {
     }
 
     pub fn get_auth(&self) -> AuthCookie {
-        let raw_cookies = match self.jar.cookies(&TOP_URL) {
+        let raw_cookies = match self.http.cookie_jar.cookies(&TOP_URL) {
             Some(s) => s,
             None => return AuthCookie { session_id: None },
         };
@@ -101,12 +105,12 @@ impl AtCoderClient {
             "{}={}; Path=/; HttpOnly; Secure; Domain={}",
             COOKIE_KEY_SESSION_ID, session_id, DOMAIN,
         );
-        self.jar.add_cookie_str(&cookie, &TOP_URL);
+        self.http.cookie_jar.add_cookie_str(&cookie, &TOP_URL);
     }
 
     pub fn revoke_auth(&mut self) {
         let cookie = format!("{}=", COOKIE_KEY_SESSION_ID);
-        self.jar.add_cookie_str(&cookie, &TOP_URL);
+        self.http.cookie_jar.add_cookie_str(&cookie, &TOP_URL);
     }
 
     async fn fetch_atcoder_contest_info(&self, contest_url: &Url) -> Result<ContestInfo> {

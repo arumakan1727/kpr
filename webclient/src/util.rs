@@ -1,9 +1,10 @@
-use reqwest::{Client, Response, StatusCode};
+use reqwest::StatusCode;
 use scraper::{node::Element, ElementRef, Html, Selector};
 use serde::de;
 use url::Url;
 
 use crate::error::*;
+use crate::http::{Client, Response};
 
 /// Complete given link into fully qualified URL removing trailling slash.
 pub fn complete_url(link: impl AsRef<str>, host: impl AsRef<str>) -> Result<Url> {
