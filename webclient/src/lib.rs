@@ -1,5 +1,6 @@
 // exported modules
 pub mod error;
+pub mod http;
 pub mod model;
 
 // client impls

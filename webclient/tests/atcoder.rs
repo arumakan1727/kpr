@@ -1,10 +1,8 @@
-use std::thread;
 use std::time::Duration;
 
 use chrono::Local;
 use chrono::TimeZone;
 use once_cell::sync::Lazy;
-use rand::Rng;
 
 use kpr_webclient::atcoder::*;
 use kpr_webclient::*;
@@ -12,14 +10,8 @@ use kpr_webclient::*;
 mod testconfig;
 use testconfig::TestConfig;
 
-fn sleep_random_ms() {
-    let mut rng = rand::thread_rng();
-    let ms = Duration::from_millis(rng.gen_range(500..1000));
-    thread::sleep(ms);
-}
-
-#[test]
-fn should_be_contest_home_url() {
+#[tokio::test]
+async fn should_be_contest_home_url() {
     let cli = AtCoderClient::new();
     let is_contest_url = move |url: &str| cli.is_contest_home_url(&Url::parse(url).unwrap());
 
@@ -46,8 +38,8 @@ fn should_be_contest_home_url() {
     ));
 }
 
-#[test]
-fn should_not_be_contest_home_url() {
+#[tokio::test]
+async fn should_not_be_contest_home_url() {
     let cli = AtCoderClient::new();
     let is_contest_url = move |url: &str| cli.is_contest_home_url(&Url::parse(url).unwrap());
 
@@ -67,8 +59,8 @@ fn should_not_be_contest_home_url() {
     );
 }
 
-#[test]
-fn extract_problem_id_ok() {
+#[tokio::test]
+async fn extract_problem_id_ok() {
     let cli = AtCoderClient::new();
     let problem_id = move |url: &str| {
         cli.extract_problem_id(&Url::parse(url).unwrap())
@@ -92,8 +84,8 @@ fn extract_problem_id_ok() {
         "practice2_a"
     );
 }
-#[test]
-fn extract_problem_id_ng() {
+#[tokio::test]
+async fn extract_problem_id_ng() {
     let cli = AtCoderClient::new();
     let problem_id_err = move |url: &str| {
         cli.extract_problem_id(&Url::parse(url).unwrap())
@@ -110,8 +102,8 @@ fn extract_problem_id_ng() {
     ));
 }
 
-#[test]
-fn should_be_problem_url() {
+#[tokio::test]
+async fn should_be_problem_url() {
     let cli = AtCoderClient::new();
     let is_problem_url = move |url: &str| cli.is_problem_url(&Url::parse(url).unwrap());
 
@@ -147,8 +139,8 @@ fn should_be_problem_url() {
     ));
 }
 
-#[test]
-fn should_not_be_problem_url() {
+#[tokio::test]
+async fn should_not_be_problem_url() {
     let cli = AtCoderClient::new();
     let is_problem_url = move |url: &str| cli.is_problem_url(&Url::parse(url).unwrap());
     assert!(!is_problem_url("https://atcoder.jp/contests/abc001"));
@@ -186,9 +178,6 @@ fn should_not_be_problem_url() {
 
 #[tokio::test]
 async fn fetch_abc001_info() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let url = Url::parse("https://atcoder.jp/contests/abc001").unwrap();
     let cli = AtCoderClient::new();
     let info = cli.fetch_contest_info(&url).await.unwrap();
@@ -229,9 +218,6 @@ async fn fetch_abc001_info() {
 
 #[tokio::test]
 async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let url = Url::parse(
         "https://kenkoooo.com/atcoder/#/contest/show/10f53d61-58e1-411e-9bfe-5fd0690a31f7",
     )
@@ -298,9 +284,6 @@ async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
 
 #[tokio::test]
 async fn fetch_problem_detail_abc003_4() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let url_str = "https://atcoder.jp/contests/abc003/tasks/abc003_4";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
@@ -346,9 +329,6 @@ async fn fetch_problem_detail_abc003_4() {
 
 #[tokio::test]
 async fn fetch_problem_detail_abc086_a() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let url_str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
@@ -384,9 +364,6 @@ async fn fetch_problem_detail_abc086_a() {
 
 #[tokio::test]
 async fn fetch_problem_detail_typical90_b_which_contains_empty_pre_tag() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_b/";
     let url = Url::parse(url_str).unwrap();
     let cli = AtCoderClient::new();
@@ -474,8 +451,8 @@ async fn fetch_problem_detail_typical90_b_which_contains_empty_pre_tag() {
     )
 }
 
-#[test]
-fn serialize_auth_data() {
+#[tokio::test]
+async fn serialize_auth_data() {
     let cli = AtCoderClient::new().with_auth(AuthCookie {
         session_id: Some("test_session_id".to_owned()),
     });
@@ -483,8 +460,8 @@ fn serialize_auth_data() {
     assert_eq!(json, r#"{"session_id":"test_session_id"}"#);
 }
 
-#[test]
-fn serialize_null_auth_data() {
+#[tokio::test]
+async fn serialize_null_auth_data() {
     let cli = AtCoderClient::new();
     let json = cli.export_authtoken_as_json();
     assert_eq!(json, r#"{"session_id":null}"#);
@@ -495,9 +472,6 @@ static PYTHON: Lazy<PgLang> = Lazy::new(|| PgLang::new("Python (3.8.2)", "4006")
 const URL_ABS_ABC086_A: &str = "https://atcoder.jp/contests/abs/tasks/abc086_a";
 
 async fn submit_abc086_a(cli: &AtCoderClient) -> Result<Url> {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     cli.submit(
         &Url::parse(URL_ABS_ABC086_A).unwrap(),
         &PYTHON,
@@ -514,10 +488,7 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<Url> {
 #[tokio::test]
 async fn fetch_language_list_ok() {
     let cli = {
-        // Avoid Dos attack
-        sleep_random_ms();
-
-        let mut cli = AtCoderClient::new();
+        let cli = AtCoderClient::new();
         let TestConfig {
             atcoder_username: username,
             atcoder_password: password,
@@ -542,11 +513,8 @@ async fn fetch_language_list_ok() {
 
 #[tokio::test]
 async fn senario_login_submit_logout() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let auth_json = {
-        let mut cli1 = AtCoderClient::new();
+        let cli1 = AtCoderClient::new();
         let TestConfig {
             atcoder_username: username,
             atcoder_password: password,
@@ -560,7 +528,7 @@ async fn senario_login_submit_logout() {
         auth_json
     };
 
-    let mut cli2 = AtCoderClient::new();
+    let cli2 = AtCoderClient::new();
     cli2.load_authtoken_json(&auth_json).unwrap();
 
     let submission_status_url = dbg!(submit_abc086_a(&cli2).await).unwrap();
@@ -577,10 +545,7 @@ async fn senario_login_submit_logout() {
 
 #[tokio::test]
 async fn login_with_wrong_password_should_be_fail() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
-    let mut cli = AtCoderClient::new();
+    let cli = AtCoderClient::new();
     let username = "test";
     let password = "test";
     let err = cli
@@ -607,9 +572,6 @@ async fn login_with_wrong_password_should_be_fail() {
 
 #[tokio::test]
 async fn submit_without_logined_should_be_fail() {
-    // Avoid Dos attack
-    sleep_random_ms();
-
     let cli = AtCoderClient::new();
     let err = submit_abc086_a(&cli).await.err().unwrap();
     match err {

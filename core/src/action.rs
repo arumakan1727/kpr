@@ -201,7 +201,7 @@ pub async fn create_contest_workspace(
         )
         .with_ticking();
     let progress_bar = bars_container
-        .add(ProgressBar::new(contest.problems.len() as u64 * 3))
+        .add(ProgressBar::new(contest.problems.len() as u64 * 2))
         .with_style(ProgressStyle::with_template("{prefix:.bold.dim} {wide_bar}").unwrap());
 
     let w = repo.workspace_home();
@@ -218,11 +218,6 @@ pub async fn create_contest_workspace(
             header.set_prefix(prefix);
             header.set_message(format!("Fetching {}", problem_id));
         }
-
-        // Avoid Dos attack
-        std::thread::sleep(Duration::from_millis(300));
-        progress_bar.inc(1);
-        std::thread::sleep(Duration::from_millis(300));
 
         let (vault_loc, info) = self::ensure_problem_data_saved(cli, &problem.url, repo).await?;
         progress_bar.inc(1);

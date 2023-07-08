@@ -1,9 +1,10 @@
-use reqwest::{Client, Response, StatusCode};
+use reqwest::StatusCode;
 use scraper::{node::Element, ElementRef, Html, Selector};
 use serde::de;
 use url::Url;
 
 use crate::error::*;
+use crate::http::{Client, Response};
 
 /// Complete given link into fully qualified URL removing trailling slash.
 pub fn complete_url(link: impl AsRef<str>, host: impl AsRef<str>) -> Result<Url> {
@@ -33,7 +34,7 @@ pub fn extract_302_location_header(
     Ok(bytes.to_str().unwrap().to_owned())
 }
 
-pub fn starts_with_anyone<'a, S, I, T>(s: S, prefixes: I) -> bool
+pub fn starts_with_oneof<'a, S, I, T>(s: S, prefixes: I) -> bool
 where
     S: AsRef<str>,
     I: IntoIterator<Item = &'a T>,

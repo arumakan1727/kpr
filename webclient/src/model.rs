@@ -43,13 +43,13 @@ pub trait Client {
 
     fn is_logged_in(&self) -> bool;
 
-    async fn login(&mut self, cred: CredMap) -> Result<()>;
+    async fn login(&self, cred: CredMap) -> Result<()>;
 
     fn export_authtoken_as_json(&self) -> String;
 
-    fn load_authtoken_json(&mut self, serialized_auth: &str) -> Result<()>;
+    fn load_authtoken_json(&self, serialized_auth: &str) -> Result<()>;
 
-    async fn logout(&mut self) -> Result<()>;
+    async fn logout(&self) -> Result<()>;
 
     async fn fetch_submittable_language_list(&self) -> Result<Vec<PgLang>>;
 
