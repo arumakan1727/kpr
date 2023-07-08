@@ -488,7 +488,7 @@ async fn submit_abc086_a(cli: &AtCoderClient) -> Result<Url> {
 #[tokio::test]
 async fn fetch_language_list_ok() {
     let cli = {
-        let mut cli = AtCoderClient::new();
+        let cli = AtCoderClient::new();
         let TestConfig {
             atcoder_username: username,
             atcoder_password: password,
@@ -514,7 +514,7 @@ async fn fetch_language_list_ok() {
 #[tokio::test]
 async fn senario_login_submit_logout() {
     let auth_json = {
-        let mut cli1 = AtCoderClient::new();
+        let cli1 = AtCoderClient::new();
         let TestConfig {
             atcoder_username: username,
             atcoder_password: password,
@@ -528,7 +528,7 @@ async fn senario_login_submit_logout() {
         auth_json
     };
 
-    let mut cli2 = AtCoderClient::new();
+    let cli2 = AtCoderClient::new();
     cli2.load_authtoken_json(&auth_json).unwrap();
 
     let submission_status_url = dbg!(submit_abc086_a(&cli2).await).unwrap();
@@ -545,7 +545,7 @@ async fn senario_login_submit_logout() {
 
 #[tokio::test]
 async fn login_with_wrong_password_should_be_fail() {
-    let mut cli = AtCoderClient::new();
+    let cli = AtCoderClient::new();
     let username = "test";
     let password = "test";
     let err = cli

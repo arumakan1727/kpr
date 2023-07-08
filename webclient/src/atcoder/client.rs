@@ -77,7 +77,7 @@ impl AtCoderClient {
         }
     }
 
-    pub fn with_auth(mut self, a: AuthCookie) -> Self {
+    pub fn with_auth(self, a: AuthCookie) -> Self {
         match a.session_id {
             Some(sid) => self.set_auth(&sid),
             None => self.revoke_auth(),
@@ -100,7 +100,7 @@ impl AtCoderClient {
         }
     }
 
-    pub fn set_auth(&mut self, session_id: &str) {
+    pub fn set_auth(&self, session_id: &str) {
         let cookie = format!(
             "{}={}; Path=/; HttpOnly; Secure; Domain={}",
             COOKIE_KEY_SESSION_ID, session_id, DOMAIN,
@@ -108,7 +108,7 @@ impl AtCoderClient {
         self.http.cookie_jar.add_cookie_str(&cookie, &TOP_URL);
     }
 
-    pub fn revoke_auth(&mut self) {
+    pub fn revoke_auth(&self) {
         let cookie = format!("{}=", COOKIE_KEY_SESSION_ID);
         self.http.cookie_jar.add_cookie_str(&cookie, &TOP_URL);
     }
@@ -314,7 +314,7 @@ impl Client for AtCoderClient {
         ]
     }
 
-    async fn login(&mut self, cred: CredMap) -> Result<()> {
+    async fn login(&self, cred: CredMap) -> Result<()> {
         let csrf_token = {
             let doc = util::fetch_html_with_parse_url(&self.http, LOGIN_URL).await?;
             let sel = util::selector_must_parsed("#main-container form > input[name='csrf_token']");
@@ -349,14 +349,14 @@ impl Client for AtCoderClient {
         self.get_auth().to_json()
     }
 
-    fn load_authtoken_json(&mut self, serialized_auth: &str) -> Result<()> {
+    fn load_authtoken_json(&self, serialized_auth: &str) -> Result<()> {
         AuthCookie::from_json(serialized_auth)?
             .session_id
             .map(|sid| self.set_auth(&sid));
         Ok(())
     }
 
-    async fn logout(&mut self) -> Result<()> {
+    async fn logout(&self) -> Result<()> {
         let csrf_token = {
             let doc = util::fetch_html_with_parse_url(&self.http, HOME_URL).await?;
             let sel = util::selector_must_parsed("#main-div form > input[name='csrf_token']");
