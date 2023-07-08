@@ -440,6 +440,7 @@ impl Client for AtCoderClient {
             self.http
                 .post(submit_url.clone())
                 .form(&params)
+                .disable_sleep()
                 .send()
                 .await?
         };

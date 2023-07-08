@@ -20,6 +20,7 @@ pub struct Client {
 pub struct RequestBuilder {
     inner: ::reqwest::RequestBuilder,
     client: Client,
+    disable_sleep: bool,
 }
 
 macro_rules! emit_request_fn {
@@ -64,7 +65,11 @@ impl Client {
     emit_request_fn!(put);
     emit_request_fn!(delete);
 
-    pub(super) async fn execute_request(&self, req: Request) -> Result<Response, Error> {
+    pub(super) async fn execute_request(
+        &self,
+        req: Request,
+        disable_sleep: bool,
+    ) -> Result<Response, Error> {
         let url_str = req.url().as_str();
         if let Some(interval) = self
             .req_intervals
@@ -72,7 +77,11 @@ impl Client {
             .find(|(pat, _)| pat.matches(url_str))
             .map(|(_, interval)| interval)
         {
-            interval.lock().await.tick().await;
+            if disable_sleep {
+                interval.lock().await.reset();
+            } else {
+                interval.lock().await.tick().await;
+            }
         }
 
         self.inner.execute(req).await
@@ -81,20 +90,31 @@ impl Client {
 
 impl RequestBuilder {
     fn new(b: ::reqwest::RequestBuilder, client: Client) -> Self {
-        Self { inner: b, client }
+        Self {
+            inner: b,
+            client,
+            disable_sleep: false,
+        }
     }
 
     pub async fn send(self) -> Result<Response, Error> {
         let req = self.inner.build()?;
-        self.client.execute_request(req).await
+        self.client.execute_request(req, self.disable_sleep).await
     }
 
-    pub fn form<T: Serialize + ?Sized>(self, form: &T) -> Self {
-        Self::new(self.inner.form(form), self.client)
+    pub fn disable_sleep(mut self) -> Self {
+        self.disable_sleep = true;
+        self
     }
 
-    pub fn json<T: Serialize + ?Sized>(self, json: &T) -> Self {
-        Self::new(self.inner.json(json), self.client)
+    pub fn form<T: Serialize + ?Sized>(mut self, form: &T) -> Self {
+        self.inner = self.inner.form(form);
+        self
+    }
+
+    pub fn json<T: Serialize + ?Sized>(mut self, json: &T) -> Self {
+        self.inner = self.inner.json(json);
+        self
     }
 
     pub fn header<K, V>(self, key: K, value: V) -> RequestBuilder
