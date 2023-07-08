@@ -12,6 +12,9 @@ pub struct Args {
 
     #[arg(short, long)]
     pub json: bool,
+
+    #[arg(short = 'N', long)]
+    pub no_cache: bool,
 }
 
 pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
@@ -19,7 +22,11 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let cli = SessionPersistentClient::new(args.platform.into(), &cfg.cache_dir);
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
-    let (_, langs) = action::ensure_submittable_lang_list_saved(&cli, &repo).await?;
+    let (_, langs) = if args.no_cache {
+        action::fetch_and_save_submittable_lang_list(&cli, &repo).await?
+    } else {
+        action::ensure_submittable_lang_list_saved(&cli, &repo).await?
+    };
 
     if args.json {
         serde_json::to_writer_pretty(io::stdout(), &langs)?;
