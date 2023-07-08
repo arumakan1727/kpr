@@ -203,6 +203,41 @@ pub fn canonicalize_path(path: impl AsRef<Path>) -> Result<PathBuf> {
         .map_err(|e| Error::CanonicalizePath(path.to_owned(), e))
 }
 
+/// Normalize the path
+/// ```
+/// use fsutil::normalize_path;
+/// use std::path::Path;
+///
+/// assert_eq!(normalize_path("./hoge/.config/././foo"), Path::new("hoge/.config/foo"));
+/// assert_eq!(normalize_path("hoge/.config/../../bar/."), Path::new("bar"));
+/// assert_eq!(normalize_path("../foo/../hello"), Path::new("../hello"));
+/// assert_eq!(normalize_path("/"), Path::new("/"));
+/// assert_eq!(normalize_path("/foo/"), Path::new("/foo"));
+/// assert_eq!(normalize_path("./foo/"), Path::new("foo"));
+/// assert_eq!(normalize_path("."), Path::new("."));
+/// assert_eq!(normalize_path("./././."), Path::new("."));
+/// ```
+pub fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
+    use ::std::path::Component;
+    let components = path.as_ref().components();
+    let mut stack = Vec::with_capacity(components.size_hint().1.unwrap_or(4));
+    for c in components {
+        match c {
+            Component::CurDir => (),
+            Component::ParentDir if !stack.is_empty() => {
+                stack.pop();
+            }
+            _ => {
+                stack.push(c);
+            }
+        }
+    }
+    if stack.is_empty() {
+        stack.push(Component::CurDir);
+    }
+    stack.iter().collect()
+}
+
 /// Calc relative path.
 /// ```
 /// use kpr_core::fsutil::relative_path;
