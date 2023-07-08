@@ -18,7 +18,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
 
     let saved_loc = action::create_shojin_workspace(&cli, &url, &repo, Local::now()).await?;
-    let saved_dir = fsutil::relative_path(util::current_dir(), saved_loc.dir()).unwrap();
+    let saved_dir = fsutil::relative_path(util::current_dir(), saved_loc.dir());
 
     print_success!(
         "Successfully created shojin workspace in {:?} ✨",

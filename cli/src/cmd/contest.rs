@@ -21,7 +21,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
 
     let res = action::create_contest_workspace(&cli, &url, &repo, Local::now()).await?;
     let saved_dir = res[0].0.dir().parent().unwrap();
-    let saved_dir = fsutil::relative_path(util::current_dir(), saved_dir).unwrap();
+    let saved_dir = fsutil::relative_path(util::current_dir(), saved_dir);
 
     print_success!(
         "Successfully created {} workspaces in {:?} ✨",

@@ -190,10 +190,10 @@ pub fn symlink_using_relpath_with_mkdir(
     orig: impl AsRef<Path>,
     link: impl AsRef<Path>,
 ) -> Result<()> {
-    if let Some(dir) = link.as_ref().parent() {
-        self::mkdir_all(dir)?;
-    }
-    let relpath = self::relative_path(&link, &orig)?;
+    let link = link.as_ref();
+    let link_dir = link.parent().unwrap_or(Path::new("."));
+    self::mkdir_all(link_dir)?;
+    let relpath = self::relative_path(link_dir, &orig);
     symlink(relpath, link)
 }
 
@@ -239,47 +239,33 @@ pub fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
 }
 
 /// Calc relative path.
+/// It doen't consider whether `from_dir` is existing directory.
 /// ```
-/// use kpr_core::fsutil::relative_path;
+/// use fsutil::relative_path;
 /// use std::path::Path;
 ///
-/// let res = relative_path("/usr/bin/curl", "/usr/share/").unwrap();
+/// let res = relative_path("/usr/bin", "/usr/share/");
 /// assert_eq!(res, Path::new("../share"));
 ///
-/// let res = relative_path("/usr/bin/curl", "/usr").unwrap();
+/// let res = relative_path("/usr/bin/curl", "/usr/bin");
 /// assert_eq!(res, Path::new(".."));
 ///
-/// let res = relative_path("/usr", "/usr/bin/curl").unwrap();
+/// let res = relative_path("/usr", "/usr/bin/curl");
 /// assert_eq!(res, Path::new("bin/curl"));
 ///
-/// let res = relative_path("/usr/bin/curl", "/usr/bin").unwrap();
+/// let res = relative_path("/bin", "/bin");
 /// assert_eq!(res, Path::new("."));
-///
-/// // When `from` is a directory
-/// let res = relative_path("/bin", "/bin").unwrap();
-/// assert_eq!(res, Path::new("."));
-///
-/// // When `from` is a file
-/// let res = relative_path("/bin/sh", "/bin/sh").unwrap();
-/// assert_eq!(res, Path::new("sh"));
 /// ```
-pub fn relative_path<P1, P2>(from: P1, to: P2) -> Result<PathBuf>
+pub fn relative_path<P1, P2>(from_dir: P1, to: P2) -> PathBuf
 where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
 {
-    let from = from.as_ref();
-    let from_dir = if from.is_dir() {
-        from
-    } else {
-        from.parent().unwrap()
-    };
-
-    let from_dir = self::canonicalize_path(from_dir)?;
-    let to = self::canonicalize_path(to)?;
+    let from_dir = self::normalize_path(from_dir);
+    let to = self::normalize_path(to);
 
     if from_dir == to {
-        return Ok(PathBuf::from("."));
+        return PathBuf::from(".");
     }
 
     let mut ans = PathBuf::new();
@@ -289,7 +275,7 @@ where
         ans.push("..");
     }
     ans.push(to.strip_prefix(dir).unwrap());
-    Ok(ans)
+    ans
 }
 
 pub fn find_most_recently_modified_file(
