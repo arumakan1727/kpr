@@ -17,7 +17,13 @@ pub struct ContestInfo {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ContestProblemOutline {
     pub url: Url,
-    pub ord: u32,
+
+    /// Showed index name on contest site
+    /// - (Case 1) https://atcoder.jp/contests/abc001/tasks
+    ///     - → "A", "B", "C", "D"
+    /// - (Case 2) https://atcoder.jp/contests/typical90/tasks
+    ///     - → "001", "002", ..., "090"
+    pub ord: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]

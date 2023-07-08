@@ -147,18 +147,21 @@ impl AtCoderClient {
         };
         let problems: Vec<ContestProblemOutline> = {
             let sel_tr = util::selector_must_parsed("#main-container table > tbody > tr");
+            let sel_ord = util::selector_must_parsed("td:nth-child(1) > a");
             let sel_title = util::selector_must_parsed("td:nth-child(2) > a");
             let res: Result<Vec<_>> = doc
                 .select(&sel_tr)
-                .enumerate()
-                .map(|(i, node)| {
-                    let title_el = node.select_first(&sel_title)?;
-                    let url_path = title_el.value().get_attr("href", &sel_title)?;
-                    let url = util::complete_url(url_path, DOMAIN)?;
-                    Ok(ContestProblemOutline {
-                        url,
-                        ord: (i + 1) as u32,
-                    })
+                .map(|tr| {
+                    let ord = {
+                        let td = tr.select_first(&sel_ord)?;
+                        td.first_text(&sel_ord)?.trim().to_owned()
+                    };
+                    let url = {
+                        let td = tr.select_first(&sel_title)?;
+                        let url_path = td.value().get_attr("href", &sel_title)?;
+                        util::complete_url(url_path, DOMAIN)?
+                    };
+                    Ok(ContestProblemOutline { url, ord })
                 })
                 .collect();
             res?
@@ -186,7 +189,7 @@ impl AtCoderClient {
         let contest: ProblemsVirtualContest =
             util::fetch_json_with_parse_url(&self.http, &api_url).await?;
 
-        let short_title = format!("problems-bacha-{}", &contest_id[..8]);
+        let short_title = format!("AtCoderProblems_{}", &contest_id[..8]);
         let long_title = contest.info.title;
 
         let start_at = {
@@ -202,7 +205,7 @@ impl AtCoderClient {
             .iter()
             .enumerate()
             .map(|(i, x)| {
-                let ord = i as u32 + 1;
+                let ord = (i + 1).to_string();
                 // "abc001_a" => "abc001"
                 let contest_name = x.id.rsplit_once('_').unwrap().0;
                 let url = util::complete_url(
