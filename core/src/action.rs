@@ -14,13 +14,14 @@ use kpr_webclient::{problem_id::ProblemGlobalId, PgLang, ProblemInfo, SampleTest
 use self::error::*;
 use crate::{
     client::SessionPersistentClient,
-    config::{ExpanderConfig, SubmissionConfig, TestConfig},
+    config::{ExpanderConfig, TestConfig},
     interactive::{ask_credential, SpinnerExt as _},
     storage::{
         workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
     },
     style,
     testing::{AsyncTestcase, FsTestcase, JudgeCode, TestCommand, TestOutcome, TestRunner},
+    Config,
 };
 
 pub async fn login(cli: &mut SessionPersistentClient) -> Result<()> {
@@ -346,14 +347,14 @@ pub async fn submit(
     cli: &SessionPersistentClient,
     program_file: impl AsRef<Path>,
     problem_url: &Url,
-    cfg: &SubmissionConfig,
+    cfg: &Config,
     available_langs: &[PgLang],
 ) -> Result<Url> {
     let platform = cli.platform();
     let filename = program_file.as_ref().file_name().unwrap().to_string_lossy();
 
     let lang = {
-        let lang_name = cfg
+        let lang_name = cfg.submit
             .lang
             .find_submission_lang_for_filename(&filename, platform)
             .with_context(|| format!("Unconfigured submission lang for filename '{}' (No entry mathed glob in `submit.lang.{}[]`)", filename, platform.lowercase()))?;
@@ -364,7 +365,12 @@ pub async fn submit(
             .with_context(|| format!("No such language named '{}'", lang_name))?
     };
 
-    let source_code = fsutil::read_to_string(&program_file)?;
+    let source_code = if cfg.submit.apply_expander {
+        self::expand_source_code(&program_file, &cfg.expander)
+            .or_else(|_| fsutil::read_to_string(&program_file))?
+    } else {
+        fsutil::read_to_string(&program_file)?
+    };
 
     let submission_status_url = cli
         .submit(problem_url, &lang, &source_code)
@@ -381,29 +387,26 @@ pub async fn submit(
     Ok(submission_status_url)
 }
 
-pub fn expand_source_code(
-    source_code_filepath: impl AsRef<Path>,
-    cfg: &ExpanderConfig,
-) -> Result<String> {
-    let source_code_filepath = fsutil::canonicalize_path(source_code_filepath)?;
-    let source_code_dir = source_code_filepath.parent().unwrap();
+pub fn expand_source_code(program_file: impl AsRef<Path>, cfg: &ExpanderConfig) -> Result<String> {
+    let program_file = fsutil::canonicalize_path(program_file)?;
+    let program_dir = program_file.parent().unwrap();
 
-    let Some(ext) = source_code_filepath.extension().and_then(OsStr::to_str) else {
-        bail!("Cannot detect language due to file name has no extension: {:?}", source_code_filepath);
+    let Some(ext) = program_file.extension().and_then(OsStr::to_str) else {
+        bail!("Cannot detect language due to file name has no extension: {:?}", program_file);
     };
 
     let generated_code = match ext {
         "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
-            let content = fsutil::read_to_string(&source_code_filepath)?;
+            let content = fsutil::read_to_string(&program_file)?;
             kpr_expander::cpp::Expander::default()
                 .header_serch_dirs(&cfg.cpp.header_search_dirs)
                 .expansion_targets(&cfg.cpp.expansion_targets)
                 .black_list(&cfg.cpp.black_list)
-                .expand(source_code_dir, content)?
+                .expand(program_dir, content)?
         }
         _ => bail!(
             "Unsupported language (available: .c, .cpp, .h, .hpp): {:?}",
-            source_code_filepath
+            program_file
         ),
     };
     Ok(generated_code)
