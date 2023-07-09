@@ -9,6 +9,18 @@ workspace_home = './workspace'
 # Files in this dir will be copied each time for a problem workspace is created.
 workspace_template = './template'
 
+[expander.cpp]
+header_search_dirs = [
+  "./include", # Supports relative path (base dir is this config file's dir)
+]
+expansion_targets = [
+  # e.g.) #include <armkn/hoge.hpp>,   #include "armkn/foo/bar.hpp"
+  "armkn/**/*.hpp"
+]
+black_list = [
+  "armkn/debug/**/*"
+]
+
 [test]
 shell = '/bin/sh'
 include = '[mM]ain.*'
@@ -37,6 +49,7 @@ run = 'python3 #{fileName}'
 
 [submit]
 run_test = true
+use_expander = true
 
 # Submission prgramming languages.
 # Available lang name can be found by executing

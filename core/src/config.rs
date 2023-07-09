@@ -18,6 +18,7 @@ pub struct Config {
     #[serde(skip)]
     pub source_config_dir: PathBuf,
     pub repository: RepoConfig,
+    pub expander: ExpanderConfig,
     pub test: TestConfig,
     pub submit: SubmissionConfig,
 }
@@ -42,6 +43,20 @@ pub struct TestConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ExpanderConfig {
+    #[serde(skip)]
+    pub source_config_dir: PathBuf,
+    pub cpp: ExpanderCppConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ExpanderCppConfig {
+    pub header_search_dirs: Vec<PathBuf>,
+    pub expansion_targets: Vec<GlobPattern>,
+    pub black_list: Vec<GlobPattern>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct TestCommandConfig {
     pub pattern: GlobPattern,
     pub compile: Option<String>,
@@ -51,6 +66,7 @@ pub struct TestCommandConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SubmissionConfig {
     pub run_test: bool,
+    pub use_expander: bool,
     pub lang: SubmissionLangConfig,
 }
 
@@ -162,6 +178,7 @@ mod test {
         let Config {
             source_config_dir,
             repository: repo,
+            expander,
             test,
             submit,
         } = cfg;
@@ -172,12 +189,18 @@ mod test {
         assert_eq!(repo.workspace_home, Path::new("./workspace"));
         assert_eq!(repo.workspace_template, Path::new("./template"));
 
+        assert_eq!(expander.source_config_dir, source_config_dir);
+        assert_eq!(expander.cpp.header_search_dirs, &[Path::new("./include")]);
+        assert!(expander.cpp.expansion_targets.len() > 0);
+        assert!(expander.cpp.black_list.len() > 0);
+
         assert_eq!(test.shell, Path::new("/bin/sh"));
         assert_eq!(test.include, GlobPattern::parse("[mM]ain.*").unwrap());
         assert_eq!(test.compile_before_run, true);
         assert_eq!(test.command.len(), 3);
 
         assert_eq!(submit.run_test, true);
+        assert_eq!(submit.use_expander, true);
         assert_eq!(submit.lang.atcoder.len(), 3);
         assert_eq!(
             submit.lang.atcoder[0],

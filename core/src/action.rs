@@ -4,7 +4,7 @@ pub mod error {
     pub use anyhow::{Error, Result};
 }
 
-use std::path::Path;
+use std::{ffi::OsStr, path::Path};
 
 use chrono::{DateTime, Local};
 use colored::Colorize;
@@ -14,7 +14,7 @@ use kpr_webclient::{problem_id::ProblemGlobalId, PgLang, ProblemInfo, SampleTest
 use self::error::*;
 use crate::{
     client::SessionPersistentClient,
-    config::{SubmissionConfig, TestConfig},
+    config::{ExpanderConfig, SubmissionConfig, TestConfig},
     interactive::{ask_credential, SpinnerExt as _},
     storage::{
         workspace, PlatformVault, ProblemVault, ProblemWorkspace, Repository, WorkspaceNameModifier,
@@ -379,4 +379,31 @@ pub async fn submit(
         })?;
 
     Ok(submission_status_url)
+}
+
+pub fn expand_source_code(
+    source_code_filepath: impl AsRef<Path>,
+    cfg: &ExpanderConfig,
+) -> Result<String> {
+    let source_code_filepath = source_code_filepath.as_ref();
+    let source_code_dir = source_code_filepath.parent().unwrap_or(Path::new("."));
+    let Some(ext) = source_code_filepath.extension().and_then(OsStr::to_str) else {
+        bail!("Cannot detect language due to file name has no extension: {:?}", source_code_filepath);
+    };
+
+    let generated_code = match ext {
+        "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
+            let content = fsutil::read_to_string(source_code_filepath)?;
+            kpr_expander::cpp::Expander::default()
+                .header_serch_dirs(&cfg.cpp.header_search_dirs)
+                .expansion_targets(&cfg.cpp.expansion_targets)
+                .black_list(&cfg.cpp.black_list)
+                .expand(source_code_dir, content)?
+        }
+        _ => bail!(
+            "Unsupported language (available: .c, .cpp, .h, .hpp): {:?}",
+            source_code_filepath
+        ),
+    };
+    Ok(generated_code)
 }

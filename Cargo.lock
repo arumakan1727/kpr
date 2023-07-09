@@ -1018,6 +1018,7 @@ dependencies = [
  "dialoguer",
  "fsutil",
  "indicatif",
+ "kpr-expander",
  "kpr-webclient",
  "log",
  "maplit",

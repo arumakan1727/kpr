@@ -12,6 +12,7 @@ repository.workspace = true
 
 [dependencies]
 kpr-webclient = { path = "../webclient/" }
+kpr-expander = { path = "../expander/" }
 fsutil = { path = "../fsutil/" }
 serdable = { path = "../serdable/" }
 
