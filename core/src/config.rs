@@ -53,7 +53,7 @@ pub struct ExpanderConfig {
 pub struct ExpanderCppConfig {
     pub header_search_dirs: Vec<PathBuf>,
     pub expansion_targets: Vec<GlobPattern>,
-    pub black_list: Vec<GlobPattern>,
+    pub expansion_ignores: Vec<GlobPattern>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -192,7 +192,7 @@ mod test {
         assert_eq!(expander.source_config_dir, source_config_dir);
         assert_eq!(expander.cpp.header_search_dirs, &[Path::new("./include")]);
         assert!(expander.cpp.expansion_targets.len() > 0);
-        assert!(expander.cpp.black_list.len() > 0);
+        assert!(expander.cpp.expansion_ignores.len() > 0);
 
         assert_eq!(test.shell, Path::new("/bin/sh"));
         assert_eq!(test.include, GlobPattern::parse("[mM]ain.*").unwrap());

@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::ensure;
 use lazy_regex::{lazy_regex, Regex};
 use serdable::GlobPattern;
 
 use crate::cpp::assets::BITS_STDCPP_H_SORTED_HEADERS;
+use crate::{ExpanderError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeaderSearchMode {
@@ -37,7 +37,7 @@ fn extract_include_argument(line: &str) -> Option<(String, HeaderSearchMode)> {
 pub struct Expander<'a> {
     header_serch_dirs: &'a [PathBuf],
     expansion_targets: &'a [GlobPattern],
-    black_list: &'a [GlobPattern],
+    expansion_ignores: &'a [GlobPattern],
 
     // [(literal_header_path, mode, header_full_path)]
     include_directive_occurrences: Vec<(String, HeaderSearchMode, PathBuf)>,
@@ -59,8 +59,8 @@ impl<'a> Expander<'a> {
         self.expansion_targets = v;
         self
     }
-    pub fn black_list(mut self, v: &'a [GlobPattern]) -> Self {
-        self.black_list = v;
+    pub fn expansion_ignores(mut self, v: &'a [GlobPattern]) -> Self {
+        self.expansion_ignores = v;
         self
     }
 
@@ -68,7 +68,7 @@ impl<'a> Expander<'a> {
         mut self,
         abs_filepath: impl AsRef<Path>,
         source_code: impl AsRef<str>,
-    ) -> ::anyhow::Result<String> {
+    ) -> Result<String> {
         self.emit(abs_filepath, source_code)?;
         Ok(self.get_generated_code())
     }
@@ -103,41 +103,41 @@ impl<'a> Expander<'a> {
         s
     }
 
-    pub fn may_expand(&self, literal_header_path: impl AsRef<str>, mode: HeaderSearchMode) -> bool {
+    fn may_expand(&self, literal_header_path: impl AsRef<str>, mode: HeaderSearchMode) -> bool {
         let literal_header_path = literal_header_path.as_ref();
 
         if mode == HeaderSearchMode::CurrentDirFirst {
             return true;
         }
 
-        let is_expansion_target = self
-            .expansion_targets
-            .iter()
-            .any(|pat| pat.matches(literal_header_path));
+        self.in_target_list_and_not_in_ignore_list(literal_header_path)
+    }
 
-        if !is_expansion_target {
-            return false;
-        }
+    fn in_target_list(&self, literal_header_path: impl AsRef<str>) -> bool {
+        let s = literal_header_path.as_ref();
+        self.expansion_targets.iter().any(|pat| pat.matches(s))
+    }
 
-        return !self
-            .black_list
-            .iter()
-            .any(|pat| pat.matches(literal_header_path));
+    fn in_ignore_list(&self, literal_header_path: impl AsRef<str>) -> bool {
+        let s = literal_header_path.as_ref();
+        self.expansion_ignores.iter().any(|pat| pat.matches(s))
+    }
+
+    fn in_target_list_and_not_in_ignore_list(&self, literal_header_path: impl AsRef<str>) -> bool {
+        self.in_target_list(&literal_header_path) && !self.in_ignore_list(&literal_header_path)
     }
 
     pub fn emit(
         &mut self,
         abs_filepath: impl AsRef<Path>,
         source_code: impl AsRef<str>,
-    ) -> ::anyhow::Result<()> {
+    ) -> Result<()> {
         let source_code = source_code.as_ref();
         let abs_filepath = abs_filepath.as_ref();
 
-        ensure!(
-            abs_filepath.is_absolute(),
-            "cpp expander: filepath must be absolute, but given {:?}",
-            abs_filepath
-        );
+        if !abs_filepath.is_absolute() {
+            return Err(ExpanderError::NotAbsolutePath(abs_filepath.to_owned()));
+        }
 
         let abs_cwd = abs_filepath.parent().unwrap();
 
@@ -215,12 +215,23 @@ impl<'a> Expander<'a> {
                     NoSuchHeaderFile => (),
                 }
             }
-            ::log::warn!(
-                "[cpp expander] Cannot find header file '{}' (in {:?}, Line {})",
-                literal_header_path,
-                abs_filepath,
-                i + 1
-            );
+
+            let not_in_ignore_list = !self.in_ignore_list(&literal_header_path);
+            let in_target_list = self.in_target_list(&literal_header_path);
+
+            let non_std_doubule_quoted_header = mode == HeaderSearchMode::CurrentDirFirst
+                && BITS_STDCPP_H_SORTED_HEADERS
+                    .binary_search(&literal_header_path.as_str())
+                    .is_err();
+
+            if not_in_ignore_list && (in_target_list || non_std_doubule_quoted_header) {
+                return Err(ExpanderError::FileNotFound(format!(
+                    "[cpp expander] Cannot find header file '{}' (in {:?}, Line {})",
+                    literal_header_path,
+                    abs_filepath,
+                    i + 1
+                )));
+            }
         }
 
         Ok(())
@@ -269,8 +280,12 @@ mod test {
     use super::*;
 
     #[test]
-    fn should_be_ok_with_no_config_with_bits_stdcpp_h() {
+    fn should_be_ok_with_with_bits_stdcpp_h() {
         let generated = Expander::default()
+            .expansion_ignores(&[
+                GlobPattern::parse("foo/**/*.hpp").unwrap(),
+                GlobPattern::parse("nyan").unwrap(),
+            ])
             .expand(
                 Path::new("/path/to/main1.cpp"),
                 r#"#include <iostream>
@@ -323,6 +338,10 @@ int main() {
     #[test]
     fn should_be_ok_with_no_config_without_bits_stdcpp_h() {
         let generated = Expander::default()
+            .expansion_ignores(&[
+                GlobPattern::parse("foo/**/*.hpp").unwrap(),
+                GlobPattern::parse("nyan").unwrap(),
+            ])
             .expand(
                 Path::new("/path/to/main2.cpp"),
                 r#"#include <iostream>

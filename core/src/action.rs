@@ -9,6 +9,7 @@ use std::{ffi::OsStr, path::Path};
 use chrono::{DateTime, Local};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use kpr_expander::ExpanderError;
 use kpr_webclient::{problem_id::ProblemGlobalId, PgLang, ProblemInfo, SampleTestcase, Url};
 
 use self::error::*;
@@ -366,8 +367,12 @@ pub async fn submit(
     };
 
     let source_code = if cfg.submit.apply_expander {
-        self::expand_source_code(&program_file, &cfg.expander)
-            .or_else(|_| fsutil::read_to_string(&program_file))?
+        match self::expand_source_code(&program_file, &cfg.expander) {
+            Ok(code) => code,
+            Err(e @ ExpanderError::FileNotFound(_)) => return Err(anyhow!(e)),
+            Err(e @ ExpanderError::NotAbsolutePath(_)) => return Err(anyhow!(e)),
+            Err(ExpanderError::UnsupportedLang(_)) => fsutil::read_to_string(&program_file)?,
+        }
     } else {
         fsutil::read_to_string(&program_file)?
     };
@@ -387,16 +392,24 @@ pub async fn submit(
     Ok(submission_status_url)
 }
 
-pub fn expand_source_code(program_file: impl AsRef<Path>, cfg: &ExpanderConfig) -> Result<String> {
-    let abs_filepath = fsutil::canonicalize_path(program_file)?;
+pub fn expand_source_code(
+    program_file: impl AsRef<Path>,
+    cfg: &ExpanderConfig,
+) -> ::kpr_expander::Result<String> {
+    let program_file = program_file.as_ref();
+    let abs_filepath = program_file
+        .canonicalize()
+        .map_err(|e| ExpanderError::FileNotFound(format!("{}: {:?}", e, program_file)))?;
 
     let Some(ext) = abs_filepath.extension().and_then(OsStr::to_str) else {
-        bail!("Cannot detect language due to file name has no extension: {:?}", abs_filepath);
+        return  Err(ExpanderError::UnsupportedLang(abs_filepath));
     };
 
     let generated_code = match ext {
         "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
-            let content = fsutil::read_to_string(&abs_filepath)?;
+            let content = ::std::fs::read_to_string(&abs_filepath).map_err(|_| {
+                ExpanderError::FileNotFound(format!("Cannot read file {:?}", program_file))
+            })?;
             let header_search_dirs = cfg
                 .cpp
                 .header_search_dirs
@@ -409,16 +422,14 @@ pub fn expand_source_code(program_file: impl AsRef<Path>, cfg: &ExpanderConfig) 
                     }
                 })
                 .collect::<Vec<_>>();
+
             kpr_expander::cpp::Expander::default()
                 .header_serch_dirs(&header_search_dirs)
                 .expansion_targets(&cfg.cpp.expansion_targets)
-                .black_list(&cfg.cpp.black_list)
+                .expansion_ignores(&cfg.cpp.expansion_ignores)
                 .expand(abs_filepath, content)?
         }
-        _ => bail!(
-            "Unsupported language (available: .c, .cpp, .h, .hpp): {:?}",
-            abs_filepath
-        ),
+        _ => return Err(ExpanderError::UnsupportedLang(program_file.to_owned())),
     };
     Ok(generated_code)
 }

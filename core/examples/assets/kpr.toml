@@ -17,7 +17,7 @@ expansion_targets = [
   # e.g.) #include <armkn/hoge.hpp>,   #include "armkn/foo/bar.hpp"
   "armkn/**/*.hpp"
 ]
-black_list = [
+expansion_ignores = [
   "armkn/debug/**/*"
 ]
 
