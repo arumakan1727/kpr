@@ -6,7 +6,6 @@ use kpr_webclient::Platform;
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 
-use crate::collections::GlobMap;
 use crate::serdable::GlobPattern;
 use crate::testing::runner::TestCommand;
 
@@ -118,25 +117,6 @@ impl TestConfig {
                 compile: entry.compile.to_owned(),
                 run: entry.run.to_owned(),
             })
-    }
-}
-
-impl<'a> FromIterator<&'a TestCommandConfig> for GlobMap<TestCommand> {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = &'a TestCommandConfig>,
-    {
-        iter.into_iter()
-            .map(|x| {
-                (
-                    x.pattern.clone(),
-                    TestCommand {
-                        compile: x.compile.clone(),
-                        run: x.run.clone(),
-                    },
-                )
-            })
-            .collect()
     }
 }
 
