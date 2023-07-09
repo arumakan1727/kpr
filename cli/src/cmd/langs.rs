@@ -20,7 +20,8 @@ pub struct Args {
 pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let cfg = GlobalConfig::from_file_and_args(global_args);
     let cli = SessionPersistentClient::new(args.platform.into(), &cfg.cache_dir);
-    let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
+    let repo: Repository =
+        kpr_core::Config::from_file_finding_in_ancestors(util::current_dir())?.into();
 
     let (_, langs) = if args.no_cache {
         action::fetch_and_save_submittable_lang_list(&cli, &repo).await?

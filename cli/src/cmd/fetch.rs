@@ -14,7 +14,8 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     let (cli, url) =
         SessionPersistentClient::new_with_parse_url(&args.problem_url, &cfg.cache_dir)?;
 
-    let repo = Repository::from_config_file_finding_in_ancestors(util::current_dir())?;
+    let repo: Repository =
+        kpr_core::Config::from_file_finding_in_ancestors(util::current_dir())?.into();
 
     let (problem_dir, _, _) = action::fetch_and_save_problem_data(&cli, &url, &repo).await?;
 

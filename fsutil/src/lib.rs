@@ -24,9 +24,6 @@ pub mod error {
         #[error("Cannot create symlink (orig='{0}', link={1}): {2}")]
         Symlink(PathBuf, PathBuf, #[source] io::Error),
 
-        #[error("Failed to canonicalize path '{0}': {1}")]
-        CanonicalizePath(PathBuf, #[source] io::Error),
-
         #[error("No entry matched glob '{0}' in '{1}'")]
         NoEntryMatchedGlob(::glob::Pattern, PathBuf),
 
@@ -200,7 +197,7 @@ pub fn symlink_using_relpath_with_mkdir(
 pub fn canonicalize_path(path: impl AsRef<Path>) -> Result<PathBuf> {
     let path = path.as_ref();
     path.canonicalize()
-        .map_err(|e| Error::CanonicalizePath(path.to_owned(), e))
+        .map_err(|e| Error::SingleIO("Cannot canonicalize path", path.to_owned(), e))
 }
 
 /// Normalize the path

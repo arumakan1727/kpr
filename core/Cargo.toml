@@ -12,7 +12,9 @@ repository.workspace = true
 
 [dependencies]
 kpr-webclient = { path = "../webclient/" }
+kpr-expander = { path = "../expander/" }
 fsutil = { path = "../fsutil/" }
+serdable = { path = "../serdable/" }
 
 anyhow = { workspace = true }
 async-trait = { workspace = true }
@@ -20,9 +22,9 @@ chrono = { workspace = true }
 colored = { workspace = true }
 crossterm = { workspace = true }
 dialoguer = { workspace = true }
-glob = { workspace = true }
 indicatif = { workspace = true }
 log = { workspace = true }
+maplit = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
 rust-embed = { workspace = true }

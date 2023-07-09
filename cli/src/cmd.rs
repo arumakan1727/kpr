@@ -1,4 +1,5 @@
 pub mod contest;
+pub mod expand;
 pub mod fetch;
 pub mod init;
 pub mod langs;
@@ -23,14 +24,15 @@ pub struct GlobalArgs {
 
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
+    Contest(contest::Args),
+    Expand(expand::Args),
+    Fetch(fetch::Args),
+    Init(init::Args),
+    Langs(langs::Args),
     Login(login::Args),
     Logout(logout::Args),
-    Init(init::Args),
-    Fetch(fetch::Args),
-    Shojin(shojin::Args),
-    Contest(contest::Args),
-    Langs(langs::Args),
     Root(root::Args),
+    Shojin(shojin::Args),
 
     #[command(alias("t"))]
     Test(test::Args),
@@ -45,16 +47,17 @@ impl GlobalArgs {
     pub async fn exec_subcmd(&self) -> SubcmdResult {
         use Subcommand::*;
         match &self.subcmd {
+            Contest(args) => contest::exec(args, self).await,
+            Expand(args) => expand::exec(args, self),
+            Fetch(args) => fetch::exec(args, self).await,
+            Init(args) => init::exec(args, self),
+            Langs(args) => langs::exec(args, self).await,
             Login(args) => login::exec(args, self).await,
             Logout(args) => logout::exec(args, self).await,
-            Init(args) => init::exec(args, self),
-            Fetch(args) => fetch::exec(args, self).await,
-            Shojin(args) => shojin::exec(args, self).await,
-            Contest(args) => contest::exec(args, self).await,
-            Langs(args) => langs::exec(args, self).await,
-            Test(args) => test::exec(args, self).await,
-            Submit(args) => submit::exec(args, self).await,
             Root(args) => root::exec(args, self),
+            Shojin(args) => shojin::exec(args, self).await,
+            Submit(args) => submit::exec(args, self).await,
+            Test(args) => test::exec(args, self).await,
         }
     }
 }

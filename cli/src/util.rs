@@ -5,8 +5,8 @@ use std::{
     process::exit,
 };
 
-use anyhow::{bail, Context};
-use kpr_core::serdable::GlobPattern;
+use ::anyhow::{bail, Context};
+use ::serdable::GlobPattern;
 
 pub fn dedup<T>(mut v: Vec<T>) -> Vec<T>
 where
