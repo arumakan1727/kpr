@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::Context;
+use anyhow::ensure;
 use lazy_regex::{lazy_regex, Regex};
 use serdable::GlobPattern;
 
@@ -66,11 +66,10 @@ impl<'a> Expander<'a> {
 
     pub fn expand(
         mut self,
-        source_code_dir: impl AsRef<Path>,
+        abs_filepath: impl AsRef<Path>,
         source_code: impl AsRef<str>,
-    ) -> anyhow::Result<String> {
-        let dir = fsutil::canonicalize_path(&source_code_dir).context("cpp expander:")?;
-        self.emit(dir, source_code);
+    ) -> ::anyhow::Result<String> {
+        self.emit(abs_filepath, source_code)?;
         Ok(self.get_generated_code())
     }
 
@@ -126,13 +125,25 @@ impl<'a> Expander<'a> {
             .any(|pat| pat.matches(literal_header_path));
     }
 
-    pub fn emit(&mut self, abs_cwd: impl AsRef<Path>, source_code: impl AsRef<str>) -> () {
+    pub fn emit(
+        &mut self,
+        abs_filepath: impl AsRef<Path>,
+        source_code: impl AsRef<str>,
+    ) -> ::anyhow::Result<()> {
         let source_code = source_code.as_ref();
-        let abs_cwd = abs_cwd.as_ref();
+        let abs_filepath = abs_filepath.as_ref();
+
+        ensure!(
+            abs_filepath.is_absolute(),
+            "cpp expander: filepath must be absolute, but given {:?}",
+            abs_filepath
+        );
+
+        let abs_cwd = abs_filepath.parent().unwrap();
 
         let mut generated_last_line_was_expanded = false;
 
-        'line_loop: for line in source_code.lines() {
+        'line_loop: for (i, line) in source_code.lines().enumerate() {
             if RE_PRAGMA_ONCE.is_match(line) {
                 continue;
             }
@@ -176,7 +187,7 @@ impl<'a> Expander<'a> {
                         self.include_directive_occurrences.last_mut().unwrap().2 =
                             normalized_header_path.clone();
 
-                        self.emit(normalized_header_path.parent().unwrap(), content);
+                        self.emit(normalized_header_path, content)?;
                         generated_last_line_was_expanded = true;
                         continue;
                     }
@@ -197,14 +208,22 @@ impl<'a> Expander<'a> {
                         self.include_directive_occurrences.last_mut().unwrap().2 =
                             normalized_header_path.clone();
 
-                        self.emit(normalized_header_path.parent().unwrap(), content);
+                        self.emit(normalized_header_path, content)?;
                         generated_last_line_was_expanded = true;
                         continue 'line_loop;
                     }
                     NoSuchHeaderFile => (),
                 }
             }
+            ::log::warn!(
+                "[cpp expander] Cannot find header file '{}' (in {:?}, Line {})",
+                literal_header_path,
+                abs_filepath,
+                i + 1
+            );
         }
+
+        Ok(())
     }
 
     /// Returns (expansion_status, normalized_header_path)
@@ -253,7 +272,7 @@ mod test {
     fn should_be_ok_with_no_config_with_bits_stdcpp_h() {
         let generated = Expander::default()
             .expand(
-                std::env::current_dir().unwrap(),
+                Path::new("/path/to/main1.cpp"),
                 r#"#include <iostream>
 #include <cstdio>
 #include <cstdio>
@@ -305,7 +324,7 @@ int main() {
     fn should_be_ok_with_no_config_without_bits_stdcpp_h() {
         let generated = Expander::default()
             .expand(
-                std::env::current_dir().unwrap(),
+                Path::new("/path/to/main2.cpp"),
                 r#"#include <iostream>
 #include <cstdio>
 #include <cstdio>

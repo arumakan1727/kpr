@@ -388,25 +388,36 @@ pub async fn submit(
 }
 
 pub fn expand_source_code(program_file: impl AsRef<Path>, cfg: &ExpanderConfig) -> Result<String> {
-    let program_file = fsutil::canonicalize_path(program_file)?;
-    let program_dir = program_file.parent().unwrap();
+    let abs_filepath = fsutil::canonicalize_path(program_file)?;
 
-    let Some(ext) = program_file.extension().and_then(OsStr::to_str) else {
-        bail!("Cannot detect language due to file name has no extension: {:?}", program_file);
+    let Some(ext) = abs_filepath.extension().and_then(OsStr::to_str) else {
+        bail!("Cannot detect language due to file name has no extension: {:?}", abs_filepath);
     };
 
     let generated_code = match ext {
         "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
-            let content = fsutil::read_to_string(&program_file)?;
+            let content = fsutil::read_to_string(&abs_filepath)?;
+            let header_search_dirs = cfg
+                .cpp
+                .header_search_dirs
+                .iter()
+                .map(|dir| {
+                    if dir.is_absolute() {
+                        fsutil::normalize_path(dir)
+                    } else {
+                        fsutil::normalize_path(cfg.source_config_dir.join(dir))
+                    }
+                })
+                .collect::<Vec<_>>();
             kpr_expander::cpp::Expander::default()
-                .header_serch_dirs(&cfg.cpp.header_search_dirs)
+                .header_serch_dirs(&header_search_dirs)
                 .expansion_targets(&cfg.cpp.expansion_targets)
                 .black_list(&cfg.cpp.black_list)
-                .expand(program_dir, content)?
+                .expand(abs_filepath, content)?
         }
         _ => bail!(
             "Unsupported language (available: .c, .cpp, .h, .hpp): {:?}",
-            program_file
+            abs_filepath
         ),
     };
     Ok(generated_code)
