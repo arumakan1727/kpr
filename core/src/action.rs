@@ -385,15 +385,16 @@ pub fn expand_source_code(
     source_code_filepath: impl AsRef<Path>,
     cfg: &ExpanderConfig,
 ) -> Result<String> {
-    let source_code_filepath = source_code_filepath.as_ref();
-    let source_code_dir = source_code_filepath.parent().unwrap_or(Path::new("."));
+    let source_code_filepath = fsutil::canonicalize_path(source_code_filepath)?;
+    let source_code_dir = source_code_filepath.parent().unwrap();
+
     let Some(ext) = source_code_filepath.extension().and_then(OsStr::to_str) else {
         bail!("Cannot detect language due to file name has no extension: {:?}", source_code_filepath);
     };
 
     let generated_code = match ext {
         "c" | "cpp" | "cc" | "cxx" | "h" | "hpp" => {
-            let content = fsutil::read_to_string(source_code_filepath)?;
+            let content = fsutil::read_to_string(&source_code_filepath)?;
             kpr_expander::cpp::Expander::default()
                 .header_serch_dirs(&cfg.cpp.header_search_dirs)
                 .expansion_targets(&cfg.cpp.expansion_targets)

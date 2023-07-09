@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::Context;
 use lazy_regex::{lazy_regex, Regex};
 use serdable::GlobPattern;
 
@@ -68,7 +69,7 @@ impl<'a> Expander<'a> {
         source_code_dir: impl AsRef<Path>,
         source_code: impl AsRef<str>,
     ) -> anyhow::Result<String> {
-        let dir = fsutil::canonicalize_path(source_code_dir)?;
+        let dir = fsutil::canonicalize_path(&source_code_dir).context("cpp expander:")?;
         self.emit(dir, source_code);
         Ok(self.get_generated_code())
     }
