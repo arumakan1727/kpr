@@ -4,6 +4,7 @@ members = [
   "core",
   "expander",
   "fsutil",
+  "serdable",
   "webclient",
 ]
 

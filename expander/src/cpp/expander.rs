@@ -3,8 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use glob::Pattern;
 use lazy_regex::{lazy_regex, Regex};
+use serdable::GlobPattern;
 
 use crate::cpp::assets::BITS_STDCPP_H_SORTED_HEADERS;
 

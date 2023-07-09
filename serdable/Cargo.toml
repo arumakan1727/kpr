@@ -1,0 +1,17 @@
+[package]
+name = "serdable"
+version = "0.1.0"
+description = """
+Wrapper library that allows serde
+"""
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+glob = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+strum = { workspace = true }

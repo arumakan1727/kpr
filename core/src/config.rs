@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
 
-use anyhow::Context as _;
-use kpr_webclient::Platform;
-use rust_embed::RustEmbed;
-use serde::Deserialize;
+use ::anyhow::Context as _;
+use ::kpr_webclient::Platform;
+use ::rust_embed::RustEmbed;
+use ::serdable::GlobPattern;
+use ::serde::Deserialize;
 
-use crate::serdable::GlobPattern;
 use crate::testing::runner::TestCommand;
 
 pub fn authtoken_filename(platform: Platform) -> String {

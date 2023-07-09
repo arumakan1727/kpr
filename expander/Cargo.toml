@@ -12,6 +12,7 @@ repository.workspace = true
 
 [dependencies]
 fsutil = { path = "../fsutil/" }
+serdable = { path = "../serdable/" }
 
 anyhow = { workspace = true }
 async-trait = { workspace = true }
@@ -19,7 +20,6 @@ chrono = { workspace = true }
 colored = { workspace = true }
 crossterm = { workspace = true }
 dialoguer = { workspace = true }
-glob = { workspace = true }
 lazy-regex = { workspace = true }
 log = { workspace = true }
 maplit = { workspace = true }

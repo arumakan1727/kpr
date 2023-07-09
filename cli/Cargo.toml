@@ -19,6 +19,7 @@ path = "src/main.rs"
 kpr-core = { path = "../core" }
 kpr-webclient = { path = "../webclient/" }
 fsutil = { path = "../fsutil/" }
+serdable = { path = "../serdable/" }
 
 anyhow = { workspace = true }
 chrono = { workspace = true }

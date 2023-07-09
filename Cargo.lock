@@ -997,6 +997,7 @@ dependencies = [
  "lazy-regex",
  "log",
  "once_cell",
+ "serdable",
  "serde",
  "serde_json",
  "strum",
@@ -1016,7 +1017,6 @@ dependencies = [
  "crossterm",
  "dialoguer",
  "fsutil",
- "glob",
  "indicatif",
  "kpr-webclient",
  "log",
@@ -1024,6 +1024,7 @@ dependencies = [
  "once_cell",
  "rand 0.8.5",
  "rust-embed",
+ "serdable",
  "serde",
  "serde_json",
  "strum",
@@ -1043,13 +1044,13 @@ dependencies = [
  "crossterm",
  "dialoguer",
  "fsutil",
- "glob",
  "lazy-regex",
  "log",
  "maplit",
  "once_cell",
  "rand 0.8.5",
  "rust-embed",
+ "serdable",
  "serde",
  "serde_json",
  "strum",
@@ -1847,6 +1848,16 @@ name = "semver"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
+
+[[package]]
+name = "serdable"
+version = "0.1.0"
+dependencies = [
+ "glob",
+ "log",
+ "serde",
+ "strum",
+]
 
 [[package]]
 name = "serde"
