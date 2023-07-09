@@ -336,7 +336,7 @@ int main() {
     }
 
     #[test]
-    fn should_be_ok_with_no_config_without_bits_stdcpp_h() {
+    fn should_be_ok_without_bits_stdcpp_h() {
         let generated = Expander::default()
             .expansion_ignores(&[
                 GlobPattern::parse("foo/**/*.hpp").unwrap(),
