@@ -6,3 +6,5 @@ pub mod storage;
 pub mod str_interp;
 pub mod style;
 pub mod testing;
+
+pub use crate::config::Config;

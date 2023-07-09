@@ -22,10 +22,8 @@ compile = """\
   g++ \
   #{fileName} \
   -o #{fileStem} \
+  -std=c++17 \
   -Wall -Wextra \
-  -g \
-  -fsanitize=address,undefined \
-  -fno-omit-frame-pointer \
 """
 run = './#{fileStem}'
 

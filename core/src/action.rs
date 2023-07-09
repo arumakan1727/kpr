@@ -55,7 +55,7 @@ pub async fn logout(cli: &mut SessionPersistentClient) -> Result<()> {
 
 pub fn init_kpr_repository(dir: impl AsRef<Path>) -> Result<()> {
     Repository::init_with_example_config(&dir).context("Failed to init kpr repository")?;
-    let repo = Repository::from_config_file_finding_in_ancestors(&dir)?;
+    let repo: Repository = crate::Config::from_file_finding_in_ancestors(&dir)?.into();
 
     fsutil::write_with_mkdir(
         repo.workspace_template.join("main.py"),

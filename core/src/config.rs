@@ -16,7 +16,7 @@ pub fn authtoken_filename(platform: Platform) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Config {
     #[serde(skip)]
-    pub source_config_file: Option<PathBuf>,
+    pub source_config_dir: PathBuf,
     pub repository: RepoConfig,
     pub test: TestConfig,
     pub submit: SubmissionConfig,
@@ -24,6 +24,8 @@ pub struct Config {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RepoConfig {
+    #[serde(skip)]
+    pub source_config_dir: PathBuf,
     pub vault_home: PathBuf,
     pub workspace_home: PathBuf,
     pub workspace_template: PathBuf,
@@ -75,15 +77,22 @@ impl Config {
         std::str::from_utf8(file.data.as_ref()).unwrap().to_owned()
     }
 
-    pub fn from_toml(s: &str) -> StdResult<Self, toml::de::Error> {
-        toml::from_str(s)
+    pub fn from_toml(
+        s: &str,
+        source_config_dir: impl AsRef<Path>,
+    ) -> StdResult<Self, toml::de::Error> {
+        let dir = source_config_dir.as_ref();
+        let mut cfg: Config = toml::from_str(s)?;
+        cfg.source_config_dir = dir.to_owned();
+        cfg.repository.source_config_dir = dir.to_owned();
+        cfg.expander.source_config_dir = dir.to_owned();
+        Ok(cfg)
     }
 
     pub fn from_toml_file(filepath: PathBuf) -> anyhow::Result<Self> {
         let toml = fsutil::read_to_string(&filepath).context("Cannot read a file")?;
-        let mut cfg = Self::from_toml(&toml)
+        let cfg = Self::from_toml(&toml, filepath.parent().unwrap_or(Path::new(".")))
             .with_context(|| format!("Invalid config TOML: {:?}", filepath))?;
-        cfg.source_config_file = Some(filepath);
         Ok(cfg)
     }
 
@@ -148,16 +157,17 @@ mod test {
     #[test]
     fn example_toml_should_be_parsable() {
         let toml = Config::example_toml();
-        let cfg = dbg!(Config::from_toml(&toml)).unwrap();
+        let cfg = dbg!(Config::from_toml(&toml, Path::new("path/to/kpr-toml-dir"))).unwrap();
 
         let Config {
-            source_config_file,
+            source_config_dir,
             repository: repo,
             test,
             submit,
         } = cfg;
 
-        assert_eq!(source_config_file, None);
+        assert_eq!(source_config_dir, Path::new("path/to/kpr-toml-dir"));
+        assert_eq!(repo.source_config_dir, source_config_dir);
         assert_eq!(repo.vault_home, Path::new("./vault"));
         assert_eq!(repo.workspace_home, Path::new("./workspace"));
         assert_eq!(repo.workspace_template, Path::new("./template"));

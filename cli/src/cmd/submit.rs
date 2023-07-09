@@ -62,7 +62,7 @@ pub async fn exec(args: &Args, global_args: &GlobalArgs) -> SubcmdResult {
     };
 
     let cli = SessionPersistentClient::new(platform, &global_cfg.cache_dir);
-    let repo = Repository::from(&cfg);
+    let repo = Repository::from(cfg.clone());
 
     let (_, available_langs) = ensure_submittable_lang_list_saved(&cli, &repo).await?;
 
