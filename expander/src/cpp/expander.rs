@@ -100,7 +100,6 @@ impl<'a> Expander<'a> {
             };
         }
 
-        s.push('\n');
         s += &self.generated_code;
         s
     }
@@ -131,14 +130,20 @@ impl<'a> Expander<'a> {
         let source_code = source_code.as_ref();
         let abs_cwd = abs_cwd.as_ref();
 
+        let mut generated_last_line_was_expanded = false;
+
         'line_loop: for line in source_code.lines() {
             if RE_PRAGMA_ONCE.is_match(line) {
                 continue;
             }
 
             let Some((literal_header_path, mode)) = self::extract_include_argument(line) else {
+                if generated_last_line_was_expanded && !self.generated_code.ends_with("\n\n") {
+                    self.generated_code.push('\n');
+                }
                 self.generated_code += line;
                 self.generated_code.push('\n');
+                generated_last_line_was_expanded = false;
                 continue;
             };
 
@@ -172,6 +177,7 @@ impl<'a> Expander<'a> {
                             normalized_header_path.clone();
 
                         self.emit(normalized_header_path.parent().unwrap(), content);
+                        generated_last_line_was_expanded = true;
                         continue;
                     }
                     _ => (),
@@ -192,6 +198,7 @@ impl<'a> Expander<'a> {
                             normalized_header_path.clone();
 
                         self.emit(normalized_header_path.parent().unwrap(), content);
+                        generated_last_line_was_expanded = true;
                         continue 'line_loop;
                     }
                     NoSuchHeaderFile => (),
@@ -285,7 +292,6 @@ int main() {
 #include <hello/world>
 #include "nyan"
 #include <hoge>
-
 using namespace std;
 
 int main() {
@@ -341,7 +347,6 @@ int main() {
 #include "nyan"
 #include "chrono"
 #include <hoge>
-
 using namespace std;
 
 int main() {
