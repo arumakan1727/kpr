@@ -17,8 +17,8 @@ fn extract_testcase(pre: ElementRef) -> String {
 }
 
 pub fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
-    let sel_parts_modern_ver = util::selector_must_parsed("#task-statement .lang-ja > .part");
-    let sel_parts_old_ver = util::selector_must_parsed("#task-statement > .part");
+    let sel_parts_try1 = util::selector_must_parsed("#task-statement > .lang > .lang-ja section");
+    let sel_parts_try2 = util::selector_must_parsed("#task-statement > .part");
     let sel_h3 = util::selector_must_parsed("h3");
     let sel_pre = util::selector_must_parsed("pre");
 
@@ -26,15 +26,15 @@ pub fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
     let mut out_cases = Vec::with_capacity(5);
 
     for node in doc
-        .select(&sel_parts_modern_ver)
-        .chain(doc.select(&sel_parts_old_ver))
+        .select(&sel_parts_try1)
+        .chain(doc.select(&sel_parts_try2))
     {
         let h3 = node.select_first(&sel_h3)?;
         let title = h3.first_text(&sel_h3)?.trim().to_lowercase();
-        if title.starts_with("入力例") || title.starts_with("sample input") {
+        if title.contains("入力例") || title.contains("sample input") {
             let pre = node.select_first(&sel_pre)?;
             in_cases.push(extract_testcase(pre));
-        } else if title.starts_with("出力例") || title.starts_with("sample output") {
+        } else if title.contains("出力例") || title.contains("sample output") {
             let pre = node.select_first(&sel_pre)?;
             out_cases.push(extract_testcase(pre));
         }

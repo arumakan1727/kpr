@@ -363,6 +363,46 @@ async fn fetch_problem_detail_abc086_a() {
 }
 
 #[tokio::test]
+async fn fetch_problem_detail_agc002_a() {
+    let url_str = "https://atcoder.jp/contests/agc002/tasks/agc002_a";
+    let url = Url::parse(url_str).unwrap();
+    let cli = AtCoderClient::new();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+
+    assert_eq!(
+        problem_info,
+        ProblemInfo {
+            platform: Platform::AtCoder,
+            url: url.clone(),
+            problem_id: ProblemId::try_from(&url).unwrap(),
+            title: "Range Product".to_owned(),
+            execution_time_limit: Duration::from_secs(2),
+            memory_limit_kb: 256 * 1024,
+        }
+    );
+    assert_eq!(
+        testcases,
+        vec![
+            SampleTestcase {
+                ord: 1,
+                input: "1 3\n".to_owned(),
+                output: "Positive\n".to_owned(),
+            },
+            SampleTestcase {
+                ord: 2,
+                input: "-3 -1\n".to_owned(),
+                output: "Negative\n".to_owned(),
+            },
+            SampleTestcase {
+                ord: 3,
+                input: "-1 1\n".to_owned(),
+                output: "Zero\n".to_owned(),
+            },
+        ]
+    )
+}
+
+#[tokio::test]
 async fn fetch_problem_detail_typical90_b_which_contains_empty_pre_tag() {
     let url_str = "https://atcoder.jp/contests/typical90/tasks/typical90_b/";
     let url = Url::parse(url_str).unwrap();

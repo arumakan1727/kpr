@@ -1,6 +1,6 @@
 [package]
 name = "kpr-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = """
 CLI tool for Competitive Programming.
 It can download testcases, login, submit, and manage workspace for coding, etc. \
