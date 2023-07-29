@@ -65,7 +65,7 @@ impl<'a> Expander<'a> {
     }
 
     pub fn expand(
-        mut self,
+        &mut self,
         abs_filepath: impl AsRef<Path>,
         source_code: impl AsRef<str>,
     ) -> Result<String> {
@@ -179,11 +179,14 @@ impl<'a> Expander<'a> {
                     self.check_expansion(abs_cwd, &literal_header_path);
 
                 match status {
-                    AlreadyExpanded => continue,
+                    AlreadyExpanded => {
+                        self.include_directive_occurrences.last_mut().unwrap().2 =
+                            normalized_header_path.clone();
+                        continue;
+                    }
                     MustBeExpanded(content) => {
                         self.expanded_header_abs_paths
                             .insert(normalized_header_path.clone());
-
                         self.include_directive_occurrences.last_mut().unwrap().2 =
                             normalized_header_path.clone();
 
@@ -200,7 +203,11 @@ impl<'a> Expander<'a> {
                     self.check_expansion(dir, &literal_header_path);
 
                 match status {
-                    AlreadyExpanded => continue 'line_loop,
+                    AlreadyExpanded => {
+                        self.include_directive_occurrences.last_mut().unwrap().2 =
+                            normalized_header_path.clone();
+                        continue 'line_loop;
+                    }
                     MustBeExpanded(content) => {
                         self.expanded_header_abs_paths
                             .insert(normalized_header_path.clone());
