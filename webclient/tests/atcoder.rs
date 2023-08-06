@@ -492,6 +492,27 @@ async fn fetch_problem_detail_typical90_b_which_contains_empty_pre_tag() {
 }
 
 #[tokio::test]
+async fn fetch_problem_detail_abc313_3_which_is_interactive_problem() {
+    let url_str = "https://atcoder.jp/contests/abc313/tasks/abc313_d";
+    let url = Url::parse(url_str).unwrap();
+    let cli = AtCoderClient::new();
+    let (problem_info, testcases) = cli.fetch_problem_detail(&url).await.unwrap();
+
+    assert_eq!(
+        problem_info,
+        ProblemInfo {
+            platform: Platform::AtCoder,
+            url: url.clone(),
+            problem_id: ProblemId::try_from(&url).unwrap(),
+            title: "Odd or Even".to_owned(),
+            execution_time_limit: Duration::from_secs(2),
+            memory_limit_kb: 1024 * 1024,
+        }
+    );
+    assert_eq!(testcases, vec![])
+}
+
+#[tokio::test]
 async fn serialize_auth_data() {
     let cli = AtCoderClient::new().with_auth(AuthCookie {
         session_id: Some("test_session_id".to_owned()),

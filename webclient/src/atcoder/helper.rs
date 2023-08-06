@@ -32,10 +32,14 @@ pub fn scrape_testcases(doc: &Html) -> Result<Vec<SampleTestcase>> {
         let h3 = node.select_first(&sel_h3)?;
         let title = h3.first_text(&sel_h3)?.trim().to_lowercase();
         if title.contains("入力例") || title.contains("sample input") {
-            let pre = node.select_first(&sel_pre)?;
+            let Ok(pre) = node.select_first(&sel_pre) else {
+                    continue;
+                };
             in_cases.push(extract_testcase(pre));
         } else if title.contains("出力例") || title.contains("sample output") {
-            let pre = node.select_first(&sel_pre)?;
+            let Ok(pre) = node.select_first(&sel_pre) else {
+                    continue;
+                };
             out_cases.push(extract_testcase(pre));
         }
     }
