@@ -226,8 +226,11 @@ async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
     let info = cli.fetch_contest_info(&url).await.unwrap();
 
     assert_eq!(info.url, url);
-    assert_eq!(info.short_title, "AtCoderProblems_10f53d61");
-    assert_eq!(info.long_title, "あさかつ6/8");
+    assert_eq!(info.short_title, "AP_あさかつ6-8_10f5");
+    assert_eq!(
+        info.long_title,
+        "AtCoderProblemsVirtualContest_あさかつ6/8_10f53d61"
+    );
     assert_eq!(
         info.start_at,
         Local.with_ymd_and_hms(2023, 6, 8, 7, 30, 0).unwrap()

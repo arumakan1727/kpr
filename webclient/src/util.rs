@@ -181,6 +181,23 @@ impl ElementExt for Element {
     }
 }
 
+pub fn is_invalid_char_for_path(c: char) -> bool {
+    match c {
+        '\\' | '/' | ':' | '*' | '?' | '"' | '\'' | '<' | '>' | '|' => true,
+        _ => false,
+    }
+}
+
+pub fn sanitize_for_path_str(s: impl AsRef<str>) -> String {
+    return s
+        .as_ref()
+        .trim()
+        .trim_matches(is_invalid_char_for_path)
+        .replace(is_invalid_char_for_path, "-")
+        .replace(char::is_whitespace, "_")
+        .to_owned();
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
