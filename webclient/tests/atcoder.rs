@@ -217,6 +217,49 @@ async fn fetch_abc001_info() {
 }
 
 #[tokio::test]
+async fn fetch_problems_virtual_contest_info_kpr_test() {
+    let url = Url::parse(
+        "https://kenkoooo.com/atcoder/#/contest/show/0d2d6aae-bdfb-4f5d-8540-6a42c2bf1f2d",
+    )
+    .unwrap();
+
+    let cli = AtCoderClient::new();
+    let info = cli.fetch_contest_info(&url).await.unwrap();
+
+    assert_eq!(info.url, url);
+    assert_eq!(info.short_title, "AP_kpr_test_0d2d");
+    assert_eq!(
+        info.long_title,
+        "AtCoderProblemsVirtualContest_kpr test!//<>|_0d2d6aae"
+    );
+    assert_eq!(
+        info.start_at,
+        Local.with_ymd_and_hms(2023, 8, 12, 15, 10, 0).unwrap()
+    );
+    assert_eq!(
+        info.end_at,
+        Local.with_ymd_and_hms(2023, 8, 12, 15, 10, 0).unwrap()
+    );
+    assert_eq!(info.problems.len(), 2);
+
+    assert_eq!(
+        info.problems[0],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/code-festival-2015-quala/tasks/codefestival_2015_qualA_b").unwrap(),
+            ord: "1".to_owned(),
+        },
+    );
+    assert_eq!(
+        info.problems[1],
+        ContestProblemOutline {
+            url: Url::parse("https://atcoder.jp/contests/tenka1-2012-qualB/tasks/tenka1_2012_7")
+                .unwrap(),
+            ord: "2".to_owned(),
+        },
+    );
+}
+
+#[tokio::test]
 async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
     let url = Url::parse(
         "https://kenkoooo.com/atcoder/#/contest/show/10f53d61-58e1-411e-9bfe-5fd0690a31f7",
@@ -251,7 +294,8 @@ async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
     assert_eq!(
         info.problems[1],
         ContestProblemOutline {
-            url: Url::parse("https://atcoder.jp/contests/tenka1_2017/tasks/tenka1_2017_b").unwrap(),
+            url: Url::parse("https://atcoder.jp/contests/tenka1-2017-beginner/tasks/tenka1_2017_b")
+                .unwrap(),
             ord: "2".to_owned(),
         },
     );
@@ -272,7 +316,7 @@ async fn fetch_problems_virtual_contest_info_あさかつ6月8日() {
     assert_eq!(
         info.problems[4],
         ContestProblemOutline {
-            url: Url::parse("https://atcoder.jp/contests/arc062/tasks/arc062_a").unwrap(),
+            url: Url::parse("https://atcoder.jp/contests/abc046/tasks/arc062_a").unwrap(),
             ord: "5".to_owned(),
         },
     );

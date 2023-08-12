@@ -4,7 +4,7 @@ use ::cookie::Cookie;
 use ::reqwest::cookie::CookieStore as _;
 use ::std::{collections::HashMap, time::Duration};
 use chrono::TimeZone;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{auth::AuthCookie, helper, urls::*};
 use crate::{
@@ -41,6 +41,15 @@ pub struct ProblemsVirtualContestInfo {
     pub title: String,
     pub duration_second: i64,
     pub start_epoch_second: i64,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub struct ProblemsMergedProblemInfo {
+    pub id: String,
+    pub contest_id: String,
+    pub problem_index: String,
+    pub name: String,
+    pub title: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -176,6 +185,14 @@ impl AtCoderClient {
         })
     }
 
+    pub async fn fetch_problems_merged_problems_json(
+        &self,
+    ) -> Result<Vec<ProblemsMergedProblemInfo>> {
+        let url =
+            Url::parse("https://kenkoooo.com/atcoder/resources/merged-problems.json").unwrap();
+        util::fetch_json(&self.http, url).await
+    }
+
     pub async fn fetch_problems_virtual_contest_info(&self, url: &Url) -> Result<ContestInfo> {
         let Some(caps) = RE_PROBLEMS_VIRTUAL_CONTEST_URL_FRAGMENT.captures(url.fragment().unwrap_or("")) else {
             return Err(Error::NotContestUrl(url.to_owned()));
@@ -186,8 +203,12 @@ impl AtCoderClient {
             DOMAIN_KENKOOOO, contest_id
         );
 
-        let contest: ProblemsVirtualContest =
-            util::fetch_json_with_parse_url(&self.http, &api_url).await?;
+        let (contest, problems): (ProblemsVirtualContest, _) = tokio::try_join!(
+            util::fetch_json_with_parse_url(&self.http, &api_url),
+            self.fetch_problems_merged_problems_json(),
+        )?;
+        let problem_id_to_contest_id: HashMap<String, String> =
+            problems.into_iter().map(|x| (x.id, x.contest_id)).collect();
 
         let short_title = format!(
             "AP_{}_{}",
@@ -212,12 +233,12 @@ impl AtCoderClient {
             .problems
             .iter()
             .enumerate()
-            .map(|(i, x)| {
+            .map(|(i, problem)| {
                 let ord = (i + 1).to_string();
                 // "abc001_a" => "abc001"
-                let contest_name = x.id.rsplit_once('_').unwrap().0;
+                let contest_id = &problem_id_to_contest_id[&problem.id];
                 let url = util::complete_url(
-                    format!("/contests/{}/tasks/{}", contest_name, x.id),
+                    format!("/contests/{}/tasks/{}", contest_id, problem.id),
                     DOMAIN,
                 )
                 .unwrap();

@@ -183,7 +183,7 @@ impl ElementExt for Element {
 
 pub fn is_invalid_char_for_path(c: char) -> bool {
     match c {
-        '\\' | '/' | ':' | '*' | '?' | '"' | '\'' | '<' | '>' | '|' => true,
+        '\\' | '/' | ':' | '*' | '!' | '?' | '"' | '\'' | '<' | '>' | '|' => true,
         _ => false,
     }
 }
